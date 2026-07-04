@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -35,7 +34,6 @@ public partial class MainWindow : Window
             CenterOnCurrentMonitor();
             RefreshItems();
         };
-        Closing += MainWindow_Closing;
     }
 
     private void RefreshItems(string? selectName = null)
@@ -206,6 +204,8 @@ public partial class MainWindow : Window
 
     private void ItemsList_ScrollChanged(object sender, ScrollChangedEventArgs e) => UpdateStickyRegion();
 
+    private void ItemsListHost_SizeChanged(object sender, SizeChangedEventArgs e) => AlignStickyRegionHeader();
+
     private void StickyRegionToggle_Click(object sender, RoutedEventArgs e)
     {
         if (stickyRegion is null)
@@ -227,6 +227,7 @@ public partial class MainWindow : Window
 
     private void UpdateStickyRegion()
     {
+        AlignStickyRegionHeader();
         var headers = VisualDescendants<GroupItem>(ItemsList)
             .Where(item => item.IsVisible && item.DataContext is CollectionViewGroup)
             .Select(item => (
@@ -260,6 +261,19 @@ public partial class MainWindow : Window
         StickyRegionToggle.IsChecked = stickyRegion is not null
             && (!regionExpansion.TryGetValue(stickyRegion, out var expanded) || expanded);
         StickyRegionHeader.Visibility = Visibility.Visible;
+    }
+
+    private void AlignStickyRegionHeader()
+    {
+        var viewport = VisualDescendants<ScrollContentPresenter>(ItemsList).FirstOrDefault();
+        if (viewport is null || viewport.ActualWidth <= 0)
+        {
+            return;
+        }
+
+        var position = viewport.TransformToAncestor(ItemsListHost).Transform(new Point());
+        StickyRegionHeader.Margin = new Thickness(position.X, 0, 0, 0);
+        StickyRegionHeader.Width = viewport.ActualWidth;
     }
 
     private static IEnumerable<T> VisualDescendants<T>(DependencyObject parent) where T : DependencyObject
@@ -328,8 +342,6 @@ public partial class MainWindow : Window
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
-
-    private void MainWindow_Closing(object? sender, CancelEventArgs e) => ocr.Dispose();
 
     private void CenterOnCurrentMonitor()
     {

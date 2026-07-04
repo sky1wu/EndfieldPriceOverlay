@@ -67,7 +67,16 @@ public sealed partial class OcrService : IDisposable
             scores);
     }
 
-    public void Dispose() => engine.Dispose();
+    public void Dispose()
+    {
+        if (!initialized)
+        {
+            return;
+        }
+
+        engine.Dispose();
+        initialized = false;
+    }
 
     private void EnsureInitialized()
     {
