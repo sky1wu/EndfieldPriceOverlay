@@ -26,16 +26,16 @@ public sealed class LayoutConfigServiceTests
     [Fact]
     public void MarketOverviewSlotsCoverSevenCardsThenFiveCards()
     {
-        var first = MarketOverviewLayout.PriceSlot(0);
-        var seventh = MarketOverviewLayout.PriceSlot(6);
-        var eighth = MarketOverviewLayout.PriceSlot(7);
-        var last = MarketOverviewLayout.PriceSlot(11);
+        var first = MarketOverviewLayout.PriceSlot(0, 0.545);
+        var seventh = MarketOverviewLayout.PriceSlot(6, 0.545);
+        var eighth = MarketOverviewLayout.PriceSlot(7, 0.850);
+        var last = MarketOverviewLayout.PriceSlot(11, 0.850);
 
         Assert.Equal(first.Left, eighth.Left, 6);
         Assert.Equal(first.Top, seventh.Top, 6);
         Assert.True(eighth.Top > first.Bottom);
         Assert.True(last.Right < 1);
-        Assert.True(first.Top <= 0.493 && first.Bottom >= 0.565);
-        Assert.True(eighth.Top <= 0.795 && eighth.Bottom >= 0.871);
+        Assert.Equal(0.485, first.Top, 6);
+        Assert.Equal(0.846, eighth.Bottom, 6);
     }
 }

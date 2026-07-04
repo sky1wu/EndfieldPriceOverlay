@@ -35,21 +35,30 @@ public static class MarketOverviewLayout
 
     public static NormalizedRect Header { get; } = new(0.015, 0.010, 0.500, 0.185);
 
-    public static NormalizedRect PriceSlot(int index)
+    public static NormalizedRect PriceSlot(int index, double rowBottom)
     {
         if (index is < 0 or >= SlotCount)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
         }
 
+        if (rowBottom is <= 0.1 or >= 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rowBottom));
+        }
+
         const double firstCenterX = 0.138;
         const double columnStep = 0.119;
         const double halfWidth = 0.043;
+        const double priceTopOffset = 0.060;
+        const double priceBottomOffset = 0.004;
         var column = index % ColumnCount;
         var centerX = firstCenterX + column * columnStep;
-        return index < ColumnCount
-            ? new(centerX - halfWidth, 0.465, centerX + halfWidth, 0.575)
-            : new(centerX - halfWidth, 0.765, centerX + halfWidth, 0.885);
+        return new(
+            centerX - halfWidth,
+            rowBottom - priceTopOffset,
+            centerX + halfWidth,
+            rowBottom - priceBottomOffset);
     }
 }
 

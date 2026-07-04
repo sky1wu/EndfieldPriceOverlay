@@ -76,17 +76,18 @@ public sealed partial class OcrService : IDisposable
         var region = DetectRegion(headerText);
         var prices = new int?[MarketOverviewLayout.SlotCount];
         var scores = new double?[MarketOverviewLayout.SlotCount];
+        var rowBottoms = MarketOverviewLocator.LocateRowBottoms(bitmap);
         var slotsToRead = region == ItemRegionCatalog.Wuling
             ? ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count
             : MarketOverviewLayout.SlotCount;
 
         for (var index = 0; index < slotsToRead; index++)
         {
-            using var priceCrop = Crop(bitmap, MarketOverviewLayout.PriceSlot(index));
+            var row = index / MarketOverviewLayout.ColumnCount;
+            using var priceCrop = Crop(bitmap, MarketOverviewLayout.PriceSlot(index, rowBottoms[row]));
             var candidate = Detect(priceCrop)
                 .Select(block => (Block: block, Price: ParsePrice(block.Text)))
                 .Where(item => item.Price is not null)
-                // 宽裁剪同时兼容页面顶部和底部滚动位置；实际价格位于涨跌幅下方。
                 .OrderByDescending(item => item.Block.CenterY)
                 .ThenByDescending(item => item.Block.Score)
                 .FirstOrDefault();
