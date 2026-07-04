@@ -4,6 +4,9 @@
              xmlns:local="clr-namespace:EndfieldPriceOverlay"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#1B2721" />
+            <Setter Property="Foreground" Value="#EDF3EF" />
+        </Style>
     </Application.Resources>
 </Application>
