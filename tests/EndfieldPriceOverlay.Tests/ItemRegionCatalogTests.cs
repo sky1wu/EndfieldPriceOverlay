@@ -11,7 +11,7 @@ public sealed class ItemRegionCatalogTests
     [InlineData("天使罐头货组")]
     [InlineData("谷地水培肉货组")]
     [InlineData("团结牌口服液货组")]
-    [InlineData("塞什卡碑石货组")]
+    [InlineData("塞什卡髀石货组")]
     [InlineData("源石树幼苗货组")]
     [InlineData("警戒者矿镐货组")]
     [InlineData("星体晶块货组")]

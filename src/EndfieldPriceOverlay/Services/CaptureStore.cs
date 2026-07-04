@@ -159,7 +159,7 @@ public sealed class CaptureStore
     {
         if (string.IsNullOrWhiteSpace(CleanName(reading.ItemName)))
         {
-            throw new ArgumentException("商品名称不能为空。");
+            throw new ArgumentException("物资名称不能为空。");
         }
 
         if (reading.Prices.Length != 7 || reading.Prices.Any(price => price is < 300 or > 5500))

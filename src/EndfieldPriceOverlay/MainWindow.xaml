@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:EndfieldPriceOverlay"
-        Title="终末地 · 弹性物资分析仪"
+        Title="终末地 · 弹性需求物资分析仪"
         Width="980" Height="640" MinWidth="820" MinHeight="540"
         WindowStyle="None" ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterScreen" Background="#0B100E">
@@ -93,7 +93,7 @@
                         Background="{StaticResource Accent}" />
                 <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
                            Foreground="#AEBDB5" FontSize="11" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="2" Text="{Binding ItemCount, StringFormat={}{0} ITEMS}"
+                <TextBlock Grid.Column="2" Text="{Binding ItemCount, StringFormat={}{0} GOODS}"
                            VerticalAlignment="Center" Foreground="#596D62" FontSize="9" />
             </Grid>
         </DataTemplate>
@@ -213,8 +213,8 @@
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel>
-                        <TextBlock Text="弹性物资分析仪" Foreground="#F2F7F3" FontSize="17" FontWeight="SemiBold" />
-                        <TextBlock Text="ENDFIELD MARKET INTELLIGENCE" Foreground="#6E8377" FontSize="9" />
+                        <TextBlock Text="弹性需求物资分析仪" Foreground="#F2F7F3" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="ELASTIC GOODS INTELLIGENCE" Foreground="#6E8377" FontSize="9" />
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -254,8 +254,8 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="已记录商品" Foreground="#EEF4F0" FontSize="18" FontWeight="SemiBold" />
-                            <TextBlock x:Name="ItemCountText" Text="0 ITEMS" Foreground="#708479" FontSize="10" />
+                            <TextBlock Text="已记录物资" Foreground="#EEF4F0" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock x:Name="ItemCountText" Text="0 GOODS" Foreground="#708479" FontSize="10" />
                         </StackPanel>
                         <Button Grid.Column="1" Content="刷新" Padding="12,6" VerticalAlignment="Center" Click="Refresh_Click" />
                     </Grid>
@@ -367,7 +367,7 @@
                         <StackPanel>
                             <TextBlock x:Name="SelectedNameText" Text="等待记录" Foreground="#F1F6F2"
                                        FontSize="26" FontWeight="SemiBold" />
-                            <TextBlock x:Name="SelectedMetaText" Text="打开游戏商品详情页，然后开始识别"
+                            <TextBlock x:Name="SelectedMetaText" Text="打开游戏物资详情页，然后开始识别"
                                        Foreground="#778B80" FontSize="12" Margin="0,6,0,0" />
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="RECENT 7 RECORDS" Foreground="#65786E"
@@ -427,13 +427,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
-                            <TextBlock Text="记录当前商品" Foreground="#DDE7E1" FontSize="13" FontWeight="SemiBold" />
-                            <TextBlock Text="请先在游戏中打开商品详情页" Foreground="#687C71" FontSize="10" Margin="0,3,0,0" />
+                            <TextBlock Text="记录当前物资" Foreground="#DDE7E1" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock Text="请先在游戏中打开物资详情页" Foreground="#687C71" FontSize="10" Margin="0,3,0,0" />
                         </StackPanel>
                         <Button x:Name="RecognizeButton" Style="{StaticResource AccentButton}"
                                 Grid.Column="1" Width="230" Height="58" Padding="24,0"
                                 FontSize="16" FontWeight="SemiBold"
-                                Content="识别当前商品" Click="Recognize_Click" />
+                                Content="识别当前物资" Click="Recognize_Click" />
                     </Grid>
                 </Grid>
             </Grid>

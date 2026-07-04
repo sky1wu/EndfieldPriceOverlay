@@ -29,7 +29,7 @@ public partial class ConfirmationWindow : Window
         }).ToArray();
         PriceFields.ItemsSource = fields;
         HintText.Text = reading.IsConfident
-            ? "识别完成，请核对商品名与 7 天价格"
+            ? "识别完成，请核对物资名称与 7 天价格"
             : "识别结果不完整，请补全或修正后记录";
         UpdateRegionFromName();
     }
@@ -53,7 +53,7 @@ public partial class ConfirmationWindow : Window
 
         if (string.IsNullOrWhiteSpace(NameBox.Text))
         {
-            MessageBox.Show(this, "商品名称不能为空。", "无法记录");
+            MessageBox.Show(this, "物资名称不能为空。", "无法记录");
             return;
         }
 

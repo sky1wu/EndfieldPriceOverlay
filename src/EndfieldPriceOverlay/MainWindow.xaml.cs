@@ -55,7 +55,7 @@ public partial class MainWindow : Window
         var view = new ListCollectionView(rows);
         view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ItemRow.Region)));
         ItemsList.ItemsSource = view;
-        ItemCountText.Text = $"{rows.Length} ITEMS · RECENT 30 DAYS";
+        ItemCountText.Text = $"{rows.Length} GOODS · RECENT 30 DAYS";
         ItemsList.SelectedItem = rows.FirstOrDefault(row => row.Name == selectName) ?? rows.FirstOrDefault();
         _ = Dispatcher.InvokeAsync(UpdateStickyRegion, DispatcherPriority.Loaded);
         if (rows.Length == 0)
@@ -92,7 +92,7 @@ public partial class MainWindow : Window
         finally
         {
             RecognizeButton.IsEnabled = true;
-            RecognizeButton.Content = "识别当前商品";
+            RecognizeButton.Content = "识别当前物资";
         }
     }
 
@@ -282,7 +282,7 @@ public partial class MainWindow : Window
     private void ShowEmptyState()
     {
         SelectedNameText.Text = "等待记录";
-        SelectedMetaText.Text = "打开游戏商品详情页，然后开始识别";
+        SelectedMetaText.Text = "打开游戏物资详情页，然后开始识别";
         MainTrend.Values = null;
         PredictionMessageText.Text = "记录完整数据后显示预测结果";
         RequiredDaysBadge.Visibility = Visibility.Collapsed;
