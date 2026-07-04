@@ -41,6 +41,11 @@
             <Setter Property="Background" Value="{StaticResource Accent}" />
             <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
         </Style>
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#EAF1EC" />
+            <Setter Property="Background" Value="#17201B" />
+            <Setter Property="Padding" Value="14,9" />
+        </Style>
     </Window.Resources>
 
     <Border BorderBrush="#34433B" BorderThickness="1">
@@ -67,6 +72,17 @@
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="DebugMenuButton" Width="48" Height="58" Padding="0" BorderThickness="0"
+                            Background="Transparent" Content="•••" FontSize="12" ToolTip="调试工具"
+                            Click="DebugMenu_Click">
+                        <Button.ContextMenu>
+                            <ContextMenu Background="#17201B" BorderBrush="#34433B" Placement="Bottom">
+                                <MenuItem Header="调试功能" IsEnabled="False" />
+                                <Separator Background="#34433B" />
+                                <MenuItem Header="校准 OCR 识别区域…" Click="Calibrate_Click" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                     <Button Width="48" Height="58" Padding="0" BorderThickness="0" Background="Transparent"
                             Content="—" Click="Minimize_Click" />
                     <Button Width="48" Height="58" Padding="0" BorderThickness="0" Background="Transparent"
@@ -151,7 +167,7 @@
                 <Grid Grid.Column="2" Margin="28,24">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="180" />
+                        <RowDefinition Height="205" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -167,12 +183,12 @@
                             <TextBlock x:Name="SelectedMetaText" Text="打开游戏商品详情页，然后开始识别"
                                        Foreground="#778B80" FontSize="12" Margin="0,6,0,0" />
                         </StackPanel>
-                        <TextBlock Grid.Column="1" Text="PRICE TREND / 30D" Foreground="#65786E"
+                        <TextBlock Grid.Column="1" Text="RECENT 7 RECORDS" Foreground="#65786E"
                                    FontSize="10" VerticalAlignment="Bottom" />
                     </Grid>
 
                     <Border Grid.Row="1" Margin="0,20,0,12" Background="#0D1411" BorderBrush="#26322B" BorderThickness="1">
-                        <local:TrendControl x:Name="MainTrend" Margin="16" StrokeThickness="2.2" />
+                        <local:TrendControl x:Name="MainTrend" Margin="14,10,14,8" StrokeThickness="2.2" ShowLabels="True" />
                     </Border>
 
                     <Grid Grid.Row="2" Margin="0,8,0,16">
@@ -180,12 +196,24 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="未来价格" Foreground="#DDE7E1" FontSize="14" FontWeight="SemiBold" />
-                            <TextBlock x:Name="PredictionMessageText" Text="记录完整数据后显示预测结果"
-                                       Foreground="#D8A934" FontSize="12" Margin="0,6,0,0" />
-                        </StackPanel>
-                        <ItemsControl x:Name="ForecastList" Grid.Row="1" Margin="0,18,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="未来价格" Foreground="#DDE7E1" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock x:Name="PredictionMessageText" Text="记录完整数据后显示预测结果"
+                                           Foreground="#D8A934" FontSize="12" Margin="0,6,14,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Border x:Name="RequiredDaysBadge" Grid.Column="1" Visibility="Collapsed"
+                                    Background="#1A251F" BorderBrush="#39483F" BorderThickness="1"
+                                    Padding="12,7" VerticalAlignment="Top">
+                                <TextBlock x:Name="RequiredDaysText" Text="还需 1 天" Foreground="{StaticResource Accent}"
+                                           FontSize="14" FontWeight="SemiBold" />
+                            </Border>
+                        </Grid>
+                        <ItemsControl x:Name="ForecastList" Grid.Row="1" Margin="0,12,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="#27342C" BorderThickness="0,0,0,1" Padding="4,10">
@@ -206,11 +234,20 @@
                         </ItemsControl>
                     </Grid>
 
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="校准区域" Margin="0,0,10,0" Click="Calibrate_Click" />
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
+                            <TextBlock Text="记录当前商品" Foreground="#DDE7E1" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock Text="请先在游戏中打开商品详情页" Foreground="#687C71" FontSize="10" Margin="0,3,0,0" />
+                        </StackPanel>
                         <Button x:Name="RecognizeButton" Style="{StaticResource AccentButton}"
+                                Grid.Column="1" Width="230" Height="58" Padding="24,0"
+                                FontSize="16" FontWeight="SemiBold"
                                 Content="识别当前商品" Click="Recognize_Click" />
-                    </StackPanel>
+                    </Grid>
                 </Grid>
             </Grid>
 
