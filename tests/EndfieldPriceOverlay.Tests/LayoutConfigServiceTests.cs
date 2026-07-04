@@ -35,5 +35,7 @@ public sealed class LayoutConfigServiceTests
         Assert.Equal(first.Top, seventh.Top, 6);
         Assert.True(eighth.Top > first.Bottom);
         Assert.True(last.Right < 1);
+        Assert.True(first.Top <= 0.493 && first.Bottom >= 0.565);
+        Assert.True(eighth.Top <= 0.795 && eighth.Bottom >= 0.871);
     }
 }

@@ -48,8 +48,8 @@ public static class MarketOverviewLayout
         var column = index % ColumnCount;
         var centerX = firstCenterX + column * columnStep;
         return index < ColumnCount
-            ? new(centerX - halfWidth, 0.485, centerX + halfWidth, 0.540)
-            : new(centerX - halfWidth, 0.785, centerX + halfWidth, 0.845);
+            ? new(centerX - halfWidth, 0.465, centerX + halfWidth, 0.575)
+            : new(centerX - halfWidth, 0.765, centerX + halfWidth, 0.885);
     }
 }
 

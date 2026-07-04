@@ -86,7 +86,9 @@ public sealed partial class OcrService : IDisposable
             var candidate = Detect(priceCrop)
                 .Select(block => (Block: block, Price: ParsePrice(block.Text)))
                 .Where(item => item.Price is not null)
-                .OrderByDescending(item => item.Block.Score)
+                // 宽裁剪同时兼容页面顶部和底部滚动位置；实际价格位于涨跌幅下方。
+                .OrderByDescending(item => item.Block.CenterY)
+                .ThenByDescending(item => item.Block.Score)
                 .FirstOrDefault();
             if (candidate.Price is not null)
             {
