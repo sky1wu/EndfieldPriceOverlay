@@ -1,62 +1,60 @@
-# 终末地弹性物资记录与预测工具
+# 终末地 · 弹性物资分析仪
 
-包含 Windows 桌面悬浮窗和命令行计算器。算法按“终末地 · 弹性物资分析仪”v5 实现：8 个价格模板、ε 反推、64 组穷举、跨周残差收敛和本周实测过滤。
+Windows 桌面工具。按窗口标题定位 `Endfield`，离线识别商品名称和最近 7 天价格，保存历史并计算本周未来价格。
 
-## 悬浮窗
+## 运行
 
-双击 `start_overlay.cmd`。首次启动会创建 `.venv` 并安装离线 OCR 依赖，完成后只保留悬浮窗；模型和价格数据均保存在本机。
+要求：Windows 10/11、[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)。
+
+双击 `start_overlay.cmd`。脚本会增量构建并启动完整商品总览，不再显示启动小悬浮窗。
 
 使用流程：
 
-1. 启动后直接显示商品总览，可查看全部已记录商品及最近 30 天价格趋势。
-2. 游戏使用无边框全屏或窗口模式，打开弹性物资详情页，点击“识别当前商品”。工具会自动寻找标题包含 `Endfield` 的游戏窗口，主副屏位置不受限制。
-3. 工具读取商品名和从旧到新的 7 天价格；高置信度时自动记录，否则显示可编辑确认页。
-4. 数据足够时显示本周未来价格；不足时提示应继续记录什么。
+1. 游戏使用窗口或无边框全屏模式，打开商品详情页。
+2. 点击“识别当前商品”，核对名称及从旧到新的 7 个价格后确认。
+3. 左侧查看所有已记录商品和最近 30 天趋势，右侧查看预测或缺少数据的提示。
+4. 识别位置变化时点击“校准区域”，依次框选商品名和完整价格图；按 `Esc` 或“取消校准”立即退出。
 
-每次识别会把图中从左到右的价格记录为“过去第 6 天至今天”，同商品同日期以最后一次记录为准。数据文件位于：
+窗口捕获按标题查找，不依赖工具与游戏位于同一显示器。OCR、模型和价格数据均留在本机。
+
+## 数据位置
 
 ```text
 %LOCALAPPDATA%\EndfieldPriceOverlay\prices.db
+%LOCALAPPDATA%\EndfieldPriceOverlay\config.json
 ```
 
-默认识别区域适配示例中的 16:9 全屏布局，并自动处理 1080p/4K 与 Windows DPI 缩放。游戏 UI 缩放或窗口位置不同时，点击“校准区域”，依次框选商品名称和完整的 7 柱价格图。
-框选过程中可按 `Esc`、`Q` 或直接关闭窗口取消，并返回商品总览。
+数据库结构兼容旧 Python 版本，升级后会直接显示原有记录。
 
-若识别仍异常，最近一次识别的局部裁剪与 OCR 坐标会写入 `%LOCALAPPDATA%\EndfieldPriceOverlay\debug`，不保存完整游戏截图。
-
-> 独占全屏可能导致普通桌面悬浮窗或截图不可用，请改用无边框全屏。本工具只读取屏幕截图，不读取游戏内存，也不模拟输入。
-
-## 命令行计算
-
-历史周必须按从旧到新的顺序传入，每周固定 7 个值（周一至周日）：
+## 开发
 
 ```powershell
-python .\endfield_price.py --week "1760,1900,2530,2340,3150,3200,2890"
+dotnet restore .\EndfieldPriceOverlay.slnx
+dotnet build .\EndfieldPriceOverlay.slnx
+dotnet test .\EndfieldPriceOverlay.slnx
 ```
 
-多周校准并用本周已知价格过滤；未知日期写 `-`：
+生成包含 .NET 运行时的 Windows x64 发布目录：
 
 ```powershell
-python .\endfield_price.py `
-  --week "1760,1900,2530,2340,3150,3200,2890" `
-  --week "1980,1900,2990,2700,3570,2600,1700" `
-  --current "2464,1316,-,-,-,-,-"
+.\scripts\publish.ps1
 ```
 
-加 `--json` 可获得适合程序调用的完整结果。
+主要目录：
 
-Python 调用：
-
-```python
-from endfield_price import calculate_future_prices
-
-result = calculate_future_prices(
-    history_weeks=[
-        [1760, 1900, 2530, 2340, 3150, 3200, 2890],
-        [1980, 1900, 2990, 2700, 3570, 2600, 1700],
-    ],
-    current_week=[2464, 1316, None, None, None, None, None],
-)
+```text
+src/EndfieldPriceOverlay/        WPF 应用、OCR、窗口捕获与预测逻辑
+tests/EndfieldPriceOverlay.Tests/ 单元测试和算法回归测试
+legacy/python/                    原 Python 原型，仅用于回归参考
+legacy/reference/                 原算法分析仪存档
 ```
 
-每周模板是独立随机的，因此没有本周实测时只能列出未来一周的 8 种模板可能；只有一周历史时，ε 来源也未知，会列出 64 种可能。
+## 当前实现
+
+- .NET 10 + WPF，Per-Monitor V2 DPI，适配 1080p/4K 和主副屏。
+- RapidOcrNet + PP-OCRv5 中文模型，完全离线。
+- SQLite 本地存储，按日期合并最近 7 天读数。
+- 8 套价格模板、ε 反推、跨周残差收敛和本周实测过滤。
+- 校准流程无循环弹窗，任何阶段均可取消。
+
+独占全屏可能阻止普通桌面截图；遇到黑屏时改用无边框全屏。本工具不读取游戏内存，也不模拟输入。

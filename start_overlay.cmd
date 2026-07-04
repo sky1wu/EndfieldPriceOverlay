@@ -1,11 +1,19 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-if not exist ".venv\Scripts\python.exe" py -3 -m venv .venv
-call ".venv\Scripts\python.exe" -m pip install --disable-pip-version-check --quiet -r requirements.txt
+
+where dotnet >nul 2>nul
 if errorlevel 1 (
+  echo 未找到 .NET SDK，请先安装 .NET 10 SDK。
   pause
   exit /b 1
 )
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'pythonw.exe' -and $_.CommandLine -like '*overlay_app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
-start "" ".venv\Scripts\pythonw.exe" "%CD%\overlay_app.py"
+
+dotnet build ".\src\EndfieldPriceOverlay\EndfieldPriceOverlay.csproj" -c Release --nologo -v:q
+if errorlevel 1 (
+  echo 构建失败。
+  pause
+  exit /b 1
+)
+
+start "" ".\src\EndfieldPriceOverlay\bin\Release\net10.0-windows\EndfieldPriceOverlay.exe"
