@@ -60,6 +60,27 @@ public sealed record CaptureReading(
     double NameConfidence = 1,
     IReadOnlyList<double>? PriceConfidences = null);
 
+public sealed record OcrReading(
+    string ItemName,
+    int?[] Prices,
+    DateTime CapturedAt,
+    double NameConfidence,
+    double?[] PriceConfidences)
+{
+    public bool IsComplete => !string.IsNullOrWhiteSpace(ItemName) && Prices.All(price => price is not null);
+
+    public bool IsConfident => IsComplete
+        && NameConfidence >= 0.55
+        && PriceConfidences.All(score => score is >= 0.45);
+
+    public CaptureReading Confirmed() => new(
+        ItemName,
+        Prices.Select(price => price ?? throw new InvalidOperationException("价格尚未补全。")).ToArray(),
+        CapturedAt,
+        NameConfidence,
+        PriceConfidences.Select(score => score ?? 0).ToArray());
+}
+
 public sealed record ItemSummary(
     string Name,
     DateOnly LatestDate,
