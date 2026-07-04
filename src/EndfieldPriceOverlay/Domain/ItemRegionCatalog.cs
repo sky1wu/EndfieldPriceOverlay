@@ -74,4 +74,13 @@ public static class ItemRegionCatalog
 
         return int.MaxValue;
     }
+
+    public static string IconPath(string itemName)
+    {
+        var region = TryClassify(itemName)
+            ?? throw new ArgumentOutOfRangeException(nameof(itemName), itemName, "未知物资。");
+        var index = ItemSortOrder(region, string.Concat(itemName.Where(character => !char.IsWhiteSpace(character))));
+        var prefix = region == ValleyIv ? "valley" : "wuling";
+        return $"Assets/Items/{prefix}-{index + 1:00}.png";
+    }
 }

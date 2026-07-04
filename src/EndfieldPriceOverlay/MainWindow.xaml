@@ -386,14 +386,20 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="48" />
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="110" />
+                                            <ColumnDefinition Width="84" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel>
+                                        <Border Width="44" Height="44" Background="#E9E9E9"
+                                                BorderBrush="#34433B" BorderThickness="1" ClipToBounds="True">
+                                            <Image Source="{Binding IconPath}" Stretch="UniformToFill"
+                                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" />
                                             <TextBlock Text="{Binding Detail}" Foreground="#768A7F" FontSize="10" Margin="0,5,0,0" />
                                         </StackPanel>
-                                        <local:TrendControl Grid.Column="1" Height="38" Margin="10,0,0,0"
+                                        <local:TrendControl Grid.Column="2" Height="38" Margin="8,3,0,3"
                                                             Values="{Binding Prices}" ShowGrid="False" />
                                     </Grid>
                                 </DataTemplate>
@@ -423,16 +429,22 @@
 
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel>
+                        <Border Width="58" Height="58" Margin="0,0,14,0" Background="#E9E9E9"
+                                BorderBrush="#34433B" BorderThickness="1" ClipToBounds="True">
+                            <Image Source="{Binding SelectedItem.IconPath, ElementName=ItemsList}" Stretch="UniformToFill"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock x:Name="SelectedNameText" Text="等待记录" Foreground="#F1F6F2"
                                        FontSize="26" FontWeight="SemiBold" />
                             <TextBlock x:Name="SelectedMetaText" Text="打开游戏物资详情页，然后开始识别"
                                        Foreground="#778B80" FontSize="12" Margin="0,6,0,0" />
                         </StackPanel>
-                        <TextBlock Grid.Column="1" Text="RECENT 7 RECORDS" Foreground="#65786E"
+                        <TextBlock Grid.Column="2" Text="RECENT 7 RECORDS" Foreground="#65786E"
                                    FontSize="10" VerticalAlignment="Bottom" />
                     </Grid>
 

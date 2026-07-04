@@ -42,6 +42,7 @@ public partial class MainWindow : Window
             .Where(item => ItemRegionCatalog.IsKnownRegion(item.Region))
             .Select(item => new ItemRow(
                 item.Name,
+                ItemRegionCatalog.IconPath(item.Name),
                 item.Region!,
                 $"{item.LatestDate:MM/dd} · {item.LatestPrice} · {item.RecordedDays} 天",
                 item.Trend.Select(pair => pair.Value).ToArray(),
@@ -442,6 +443,7 @@ public partial class MainWindow : Window
 
     private sealed record ItemRow(
         string Name,
+        string IconPath,
         string Region,
         string Detail,
         int[] Prices,

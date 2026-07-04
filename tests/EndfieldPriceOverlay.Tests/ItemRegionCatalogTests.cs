@@ -54,5 +54,7 @@ public sealed class ItemRegionCatalogTests
         Assert.Equal(9, ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count);
         Assert.Equal("天师龙泡泡货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[0]);
         Assert.Equal("武侠电影货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[8]);
+        Assert.Equal("Assets/Items/valley-01.png", ItemRegionCatalog.IconPath("锚点厨具货组"));
+        Assert.Equal("Assets/Items/wuling-09.png", ItemRegionCatalog.IconPath("武侠电影货组"));
     }
 }
