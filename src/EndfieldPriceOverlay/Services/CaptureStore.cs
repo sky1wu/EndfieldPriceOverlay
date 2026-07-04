@@ -56,6 +56,66 @@ public sealed class CaptureStore
             CultureInfo.InvariantCulture);
     }
 
+    public int SaveDailyPrices(IReadOnlyCollection<DailyPriceReading> readings)
+    {
+        if (readings.Count == 0)
+        {
+            throw new ArgumentException("没有可保存的当日价格。", nameof(readings));
+        }
+
+        foreach (var reading in readings)
+        {
+            Validate(reading);
+        }
+
+        if (readings.Select(reading => CleanName(reading.ItemName)).Distinct(StringComparer.Ordinal).Count() != readings.Count)
+        {
+            throw new ArgumentException("当日价格中存在重复物资。", nameof(readings));
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        foreach (var reading in readings)
+        {
+            var capturedAt = reading.CapturedAt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+            var priceDate = GameCalendar.DateAt(reading.CapturedAt).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var itemName = CleanName(reading.ItemName);
+
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = """
+                UPDATE daily_prices
+                SET captured_at=$capturedAt, price=$price, region=$region
+                WHERE price_date=$priceDate AND item_name=$itemName;
+                """;
+            update.Parameters.AddWithValue("$capturedAt", capturedAt);
+            update.Parameters.AddWithValue("$price", reading.Price);
+            update.Parameters.AddWithValue("$region", reading.Region);
+            update.Parameters.AddWithValue("$priceDate", priceDate);
+            update.Parameters.AddWithValue("$itemName", itemName);
+            if (update.ExecuteNonQuery() != 0)
+            {
+                continue;
+            }
+
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = """
+                INSERT INTO daily_prices(price_date, captured_at, item_name, price, region)
+                VALUES ($priceDate, $capturedAt, $itemName, $price, $region);
+                """;
+            insert.Parameters.AddWithValue("$priceDate", priceDate);
+            insert.Parameters.AddWithValue("$capturedAt", capturedAt);
+            insert.Parameters.AddWithValue("$itemName", itemName);
+            insert.Parameters.AddWithValue("$price", reading.Price);
+            insert.Parameters.AddWithValue("$region", reading.Region);
+            insert.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        return readings.Count;
+    }
+
     public void Update(long captureId, CaptureReading reading)
     {
         Validate(reading);
@@ -83,7 +143,11 @@ public sealed class CaptureStore
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT item_name, MAX(captured_at) AS latest
-            FROM captures
+            FROM (
+                SELECT item_name, captured_at FROM captures
+                UNION ALL
+                SELECT item_name, captured_at FROM daily_prices
+            )
             GROUP BY item_name
             ORDER BY latest DESC;
             """;
@@ -108,25 +172,44 @@ public sealed class CaptureStore
             ORDER BY captured_at, id;
             """;
         command.Parameters.AddWithValue("$itemName", CleanName(itemName));
-        using var reader = command.ExecuteReader();
-        var values = new SortedDictionary<DateOnly, int>();
-        while (reader.Read())
+        var values = new SortedDictionary<DateOnly, TimedPrice>();
+        using (var reader = command.ExecuteReader())
         {
-            var captured = GameCalendar.DateAt(DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture));
-            var prices = JsonSerializer.Deserialize<int[]>(reader.GetString(1))
-                ?? throw new InvalidDataException("价格记录格式无效。");
-            if (prices.Length != 7)
+            while (reader.Read())
             {
-                continue;
-            }
+                var capturedAt = DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture);
+                var captured = GameCalendar.DateAt(capturedAt);
+                var prices = JsonSerializer.Deserialize<int[]>(reader.GetString(1))
+                    ?? throw new InvalidDataException("价格记录格式无效。");
+                if (prices.Length != 7)
+                {
+                    continue;
+                }
 
-            for (var index = 0; index < 7; index++)
-            {
-                values[captured.AddDays(index - 6)] = prices[index];
+                for (var index = 0; index < 7; index++)
+                {
+                    SetLatest(values, captured.AddDays(index - 6), prices[index], capturedAt);
+                }
             }
         }
 
-        return values;
+        using var dailyCommand = connection.CreateCommand();
+        dailyCommand.CommandText = """
+            SELECT price_date, captured_at, price
+            FROM daily_prices
+            WHERE item_name=$itemName
+            ORDER BY captured_at, id;
+            """;
+        dailyCommand.Parameters.AddWithValue("$itemName", CleanName(itemName));
+        using var dailyReader = dailyCommand.ExecuteReader();
+        while (dailyReader.Read())
+        {
+            var date = DateOnly.ParseExact(dailyReader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var capturedAt = DateTime.Parse(dailyReader.GetString(1), CultureInfo.InvariantCulture);
+            SetLatest(values, date, dailyReader.GetInt32(2), capturedAt);
+        }
+
+        return new SortedDictionary<DateOnly, int>(values.ToDictionary(pair => pair.Key, pair => pair.Value.Price));
     }
 
     public IReadOnlyList<ItemSummary> GetItemSummaries(int trendDays = 30) =>
@@ -150,8 +233,13 @@ public sealed class CaptureStore
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT region
-            FROM captures
-            WHERE item_name=$itemName AND region IS NOT NULL
+            FROM (
+                SELECT region, captured_at, id FROM captures
+                WHERE item_name=$itemName AND region IS NOT NULL
+                UNION ALL
+                SELECT region, captured_at, id FROM daily_prices
+                WHERE item_name=$itemName AND region IS NOT NULL
+            )
             ORDER BY captured_at DESC, id DESC
             LIMIT 1;
             """;
@@ -161,6 +249,18 @@ public sealed class CaptureStore
 
     private static string? ResolveRegion(CaptureReading reading) =>
         ItemRegionCatalog.TryClassify(reading.ItemName) ?? reading.Region;
+
+    private static void SetLatest(
+        IDictionary<DateOnly, TimedPrice> values,
+        DateOnly date,
+        int price,
+        DateTime capturedAt)
+    {
+        if (!values.TryGetValue(date, out var existing) || capturedAt >= existing.CapturedAt)
+        {
+            values[date] = new TimedPrice(price, capturedAt);
+        }
+    }
 
     private static string CleanName(string name) => string.Concat(name.Where(character => !char.IsWhiteSpace(character))).Trim();
 
@@ -179,6 +279,30 @@ public sealed class CaptureStore
         if (reading.Region is not null && !ItemRegionCatalog.IsKnownRegion(reading.Region))
         {
             throw new ArgumentException("地区必须是四号谷地或武陵。");
+        }
+    }
+
+    private static void Validate(DailyPriceReading reading)
+    {
+        if (string.IsNullOrWhiteSpace(CleanName(reading.ItemName)))
+        {
+            throw new ArgumentException("物资名称不能为空。");
+        }
+
+        if (reading.Price is < 300 or > 5500)
+        {
+            throw new ArgumentException("价格必须是 300～5500 范围内的整数。");
+        }
+
+        if (!ItemRegionCatalog.IsKnownRegion(reading.Region))
+        {
+            throw new ArgumentException("地区必须是四号谷地或武陵。");
+        }
+
+        if (ItemRegionCatalog.TryClassify(reading.ItemName) is { } expectedRegion
+            && expectedRegion != reading.Region)
+        {
+            throw new ArgumentException($"{reading.ItemName} 不属于{reading.Region}。");
         }
     }
 
@@ -206,6 +330,22 @@ public sealed class CaptureStore
         command.CommandText = """
             CREATE INDEX IF NOT EXISTS idx_captures_item_time
                 ON captures(item_name, captured_at);
+            """;
+        command.ExecuteNonQuery();
+
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                price_date TEXT NOT NULL,
+                captured_at TEXT NOT NULL,
+                item_name TEXT NOT NULL,
+                price INTEGER NOT NULL,
+                region TEXT NOT NULL,
+                UNIQUE(item_name, price_date)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_daily_prices_item_date
+                ON daily_prices(item_name, price_date);
             """;
         command.ExecuteNonQuery();
     }
@@ -246,4 +386,6 @@ public sealed class CaptureStore
             providerConfigured = true;
         }
     }
+
+    private readonly record struct TimedPrice(int Price, DateTime CapturedAt);
 }

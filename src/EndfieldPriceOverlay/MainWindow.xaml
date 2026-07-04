@@ -487,14 +487,19 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
-                            <TextBlock Text="记录当前物资" Foreground="#DDE7E1" FontSize="13" FontWeight="SemiBold" />
-                            <TextBlock Text="请先在游戏中打开物资详情页" Foreground="#687C71" FontSize="10" Margin="0,3,0,0" />
+                            <TextBlock Text="记录物资价格" Foreground="#DDE7E1" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock Text="详情页录入历史；调度页批量录入今日价格" Foreground="#687C71" FontSize="10" Margin="0,3,0,0" />
                         </StackPanel>
-                        <Button x:Name="RecognizeButton" Style="{StaticResource AccentButton}"
-                                Grid.Column="1" Width="230" Height="58" Padding="24,0"
-                                FontSize="16" FontWeight="SemiBold"
+                        <Button x:Name="BatchRecognizeButton" Style="{StaticResource AccentButton}"
+                                Grid.Column="1" Width="170" Height="58" Padding="16,0" Margin="0,0,10,0"
+                                FontSize="14" FontWeight="SemiBold"
+                                Content="批量识别今日价格" Click="BatchRecognize_Click" />
+                        <Button x:Name="RecognizeButton"
+                                Grid.Column="2" Width="140" Height="58" Padding="16,0"
+                                FontSize="14" FontWeight="SemiBold"
                                 Content="识别当前物资" Click="Recognize_Click" />
                     </Grid>
                 </Grid>

@@ -61,6 +61,18 @@ public sealed record CaptureReading(
     IReadOnlyList<double>? PriceConfidences = null,
     string? Region = null);
 
+public sealed record DailyPriceReading(
+    string ItemName,
+    int Price,
+    DateTime CapturedAt,
+    string Region);
+
+public sealed record MarketOverviewReading(
+    string? Region,
+    int?[] Prices,
+    DateTime CapturedAt,
+    double?[] PriceConfidences);
+
 public sealed record OcrReading(
     string ItemName,
     int?[] Prices,

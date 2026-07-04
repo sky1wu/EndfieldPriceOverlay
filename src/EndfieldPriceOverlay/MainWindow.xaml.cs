@@ -49,6 +49,7 @@ public partial class MainWindow : Window
                 item))
             .OrderBy(row => ItemRegionCatalog.SortOrder(row.Region))
             .ThenByDescending(row => row.Summary.LatestDate)
+            .ThenBy(row => ItemRegionCatalog.ItemSortOrder(row.Region, row.Name))
             .ToArray();
         var view = new ListCollectionView(rows);
         view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ItemRow.Region)));
@@ -65,6 +66,7 @@ public partial class MainWindow : Window
     private async void Recognize_Click(object sender, RoutedEventArgs e)
     {
         RecognizeButton.IsEnabled = false;
+        BatchRecognizeButton.IsEnabled = false;
         RecognizeButton.Content = "正在识别…";
         StatusText.Text = "正在截取 Endfield 窗口并进行离线 OCR…";
         try
@@ -90,7 +92,42 @@ public partial class MainWindow : Window
         finally
         {
             RecognizeButton.IsEnabled = true;
+            BatchRecognizeButton.IsEnabled = true;
             RecognizeButton.Content = "识别当前物资";
+        }
+    }
+
+    private async void BatchRecognize_Click(object sender, RoutedEventArgs e)
+    {
+        RecognizeButton.IsEnabled = false;
+        BatchRecognizeButton.IsEnabled = false;
+        BatchRecognizeButton.Content = "正在批量识别…";
+        StatusText.Text = "正在识别地区调度页的全部今日价格…";
+        try
+        {
+            var frame = await CaptureWithoutOverlayAsync();
+            var reading = await Task.Run(() => ocr.RecognizeMarketOverview(frame.Image));
+            var dialog = new BatchConfirmationWindow(reading) { Owner = this };
+            if (dialog.ShowDialog() != true || dialog.Readings is null)
+            {
+                StatusText.Text = "已取消，本次批量识别未写入数据";
+                return;
+            }
+
+            var count = await Task.Run(() => store.SaveDailyPrices(dialog.Readings));
+            RefreshItems(dialog.Readings[0].ItemName);
+            StatusText.Text = $"已记录 {dialog.Readings[0].Region} {count} 项物资的今日价格";
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = exception.Message;
+            MessageBox.Show(this, exception.Message, "批量识别失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            RecognizeButton.IsEnabled = true;
+            BatchRecognizeButton.IsEnabled = true;
+            BatchRecognizeButton.Content = "批量识别今日价格";
         }
     }
 
@@ -296,7 +333,7 @@ public partial class MainWindow : Window
     private void ShowEmptyState()
     {
         SelectedNameText.Text = "等待记录";
-        SelectedMetaText.Text = "打开游戏物资详情页，然后开始识别";
+        SelectedMetaText.Text = "打开物资详情页或地区调度页，然后开始识别";
         MainTrend.Values = null;
         PredictionMessageText.Text = "记录完整数据后显示预测结果";
         RequiredDaysBadge.Visibility = Visibility.Collapsed;

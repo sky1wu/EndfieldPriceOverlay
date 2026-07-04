@@ -67,6 +67,46 @@ public sealed partial class OcrService : IDisposable
             scores);
     }
 
+    public MarketOverviewReading RecognizeMarketOverview(BitmapSource source)
+    {
+        EnsureInitialized();
+        using var bitmap = ToSkBitmap(source);
+        using var headerCrop = Crop(bitmap, MarketOverviewLayout.Header);
+        var headerText = string.Concat(Detect(headerCrop).Select(block => block.Text));
+        var region = DetectRegion(headerText);
+        var prices = new int?[MarketOverviewLayout.SlotCount];
+        var scores = new double?[MarketOverviewLayout.SlotCount];
+        var slotsToRead = region == ItemRegionCatalog.Wuling
+            ? ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count
+            : MarketOverviewLayout.SlotCount;
+
+        for (var index = 0; index < slotsToRead; index++)
+        {
+            using var priceCrop = Crop(bitmap, MarketOverviewLayout.PriceSlot(index));
+            var candidate = Detect(priceCrop)
+                .Select(block => (Block: block, Price: ParsePrice(block.Text)))
+                .Where(item => item.Price is not null)
+                .OrderByDescending(item => item.Block.Score)
+                .FirstOrDefault();
+            if (candidate.Price is not null)
+            {
+                prices[index] = candidate.Price;
+                scores[index] = candidate.Block.Score;
+            }
+        }
+
+        var detectedCount = prices.Count(price => price is not null);
+        if (detectedCount < 5)
+        {
+            throw new InvalidOperationException("未识别到物资总览。请打开弹性需求物资的地区调度页面，并确保价格卡片完整可见。");
+        }
+
+        region ??= prices.Skip(ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count).Any(price => price is not null)
+            ? ItemRegionCatalog.ValleyIv
+            : ItemRegionCatalog.Wuling;
+        return new MarketOverviewReading(region, prices, DateTime.Now, scores);
+    }
+
     public void Dispose()
     {
         if (!initialized)
@@ -127,6 +167,21 @@ public sealed partial class OcrService : IDisposable
             .LastOrDefault(value => value is >= 300 and <= 5500) is { } value and > 0
                 ? value
                 : null;
+    }
+
+    private static string? DetectRegion(string text)
+    {
+        var normalized = string.Concat(text.Where(character => !char.IsWhiteSpace(character)));
+        if (normalized.Contains(ItemRegionCatalog.ValleyIv, StringComparison.Ordinal)
+            || normalized.Contains("四号", StringComparison.Ordinal)
+            || normalized.Contains("谷地", StringComparison.Ordinal))
+        {
+            return ItemRegionCatalog.ValleyIv;
+        }
+
+        return normalized.Contains(ItemRegionCatalog.Wuling, StringComparison.Ordinal)
+            ? ItemRegionCatalog.Wuling
+            : null;
     }
 
     private static SKBitmap Crop(SKBitmap source, NormalizedRect area)

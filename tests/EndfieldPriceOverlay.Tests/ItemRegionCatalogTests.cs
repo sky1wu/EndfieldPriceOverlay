@@ -43,4 +43,16 @@ public sealed class ItemRegionCatalogTests
         Assert.Equal(ItemRegionCatalog.Wuling, ItemRegionCatalog.TryClassify(" 武侠电影 货组 "));
         Assert.Null(ItemRegionCatalog.TryClassify("新货物"));
     }
+
+    [Fact]
+    public void RegionItemsFollowMarketOverviewCardOrder()
+    {
+        Assert.Equal(12, ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.ValleyIv).Count);
+        Assert.Equal("锚点厨具货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.ValleyIv)[0]);
+        Assert.Equal("硬脑壳头盔货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.ValleyIv)[11]);
+        Assert.Equal(11, ItemRegionCatalog.ItemSortOrder(ItemRegionCatalog.ValleyIv, "硬脑壳头盔货组"));
+        Assert.Equal(9, ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count);
+        Assert.Equal("天师龙泡泡货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[0]);
+        Assert.Equal("武侠电影货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[8]);
+    }
 }

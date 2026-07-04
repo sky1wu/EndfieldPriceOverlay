@@ -28,6 +28,31 @@ public sealed record ScreenLayout(
         new(0.472, 0.445, 0.810, 0.650));
 }
 
+public static class MarketOverviewLayout
+{
+    public const int ColumnCount = 7;
+    public const int SlotCount = 12;
+
+    public static NormalizedRect Header { get; } = new(0.015, 0.010, 0.500, 0.185);
+
+    public static NormalizedRect PriceSlot(int index)
+    {
+        if (index is < 0 or >= SlotCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        const double firstCenterX = 0.138;
+        const double columnStep = 0.119;
+        const double halfWidth = 0.043;
+        var column = index % ColumnCount;
+        var centerX = firstCenterX + column * columnStep;
+        return index < ColumnCount
+            ? new(centerX - halfWidth, 0.485, centerX + halfWidth, 0.540)
+            : new(centerX - halfWidth, 0.785, centerX + halfWidth, 0.845);
+    }
+}
+
 public sealed class LayoutConfigService
 {
     private readonly string configPath;

@@ -22,4 +22,18 @@ public sealed class LayoutConfigServiceTests
 
         Assert.Equal(custom, service.Effective(custom, 3840));
     }
+
+    [Fact]
+    public void MarketOverviewSlotsCoverSevenCardsThenFiveCards()
+    {
+        var first = MarketOverviewLayout.PriceSlot(0);
+        var seventh = MarketOverviewLayout.PriceSlot(6);
+        var eighth = MarketOverviewLayout.PriceSlot(7);
+        var last = MarketOverviewLayout.PriceSlot(11);
+
+        Assert.Equal(first.Left, eighth.Left, 6);
+        Assert.Equal(first.Top, seventh.Top, 6);
+        Assert.True(eighth.Top > first.Bottom);
+        Assert.True(last.Right < 1);
+    }
 }

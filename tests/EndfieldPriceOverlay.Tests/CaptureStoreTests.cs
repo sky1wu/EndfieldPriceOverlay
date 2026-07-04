@@ -82,6 +82,45 @@ public sealed class CaptureStoreTests : IDisposable
     }
 
     [Fact]
+    public void DailyPricesCreateItemsAndReplaceSameGameDate()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "daily-prices.db"));
+        var initial = new DailyPriceReading(
+            "锚点厨具货组",
+            3004,
+            new DateTime(2026, 7, 4, 12, 0, 0),
+            ItemRegionCatalog.ValleyIv);
+        store.SaveDailyPrices([initial]);
+
+        store.SaveDailyPrices([initial with { Price = 3100, CapturedAt = new DateTime(2026, 7, 4, 13, 0, 0) }]);
+
+        var summary = Assert.Single(store.GetItemSummaries());
+        Assert.Equal("锚点厨具货组", summary.Name);
+        Assert.Equal(new DateOnly(2026, 7, 4), summary.LatestDate);
+        Assert.Equal(3100, summary.LatestPrice);
+        Assert.Equal(ItemRegionCatalog.ValleyIv, summary.Region);
+    }
+
+    [Fact]
+    public void NewerDetailCaptureCanReplaceBatchPrice()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "merged-prices.db"));
+        store.SaveDailyPrices([
+            new DailyPriceReading(
+                "锚点厨具货组",
+                3004,
+                new DateTime(2026, 7, 4, 12, 0, 0),
+                ItemRegionCatalog.ValleyIv),
+        ]);
+        store.Save(new CaptureReading(
+            "锚点厨具货组",
+            [1000, 1100, 1200, 1300, 1400, 1500, 3200],
+            new DateTime(2026, 7, 4, 13, 0, 0)));
+
+        Assert.Equal(3200, store.GetDatedPrices("锚点厨具货组")[new DateOnly(2026, 7, 4)]);
+    }
+
+    [Fact]
     public void ExistingDatabaseIsMigratedBeforeRegionIsStored()
     {
         _ = new CaptureStore(Path.Combine(directory, "provider-bootstrap.db"));
