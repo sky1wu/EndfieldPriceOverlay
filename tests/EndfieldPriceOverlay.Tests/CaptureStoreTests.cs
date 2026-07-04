@@ -35,6 +35,24 @@ public sealed class CaptureStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveReturnsIdThatCanBeUpdated()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "update-by-id.db"));
+        var id = store.Save(new CaptureReading(
+            "商品",
+            [1000, 1100, 1200, 1300, 1400, 1500, 1600],
+            new DateTime(2026, 7, 4, 12, 0, 0)));
+
+        store.Update(id, new CaptureReading(
+            "商品",
+            [1001, 1101, 1201, 1301, 1401, 1501, 1601],
+            new DateTime(2026, 7, 4, 13, 0, 0)));
+
+        Assert.True(id > 0);
+        Assert.Equal(1601, store.GetDatedPrices("商品")[new DateOnly(2026, 7, 4)]);
+    }
+
+    [Fact]
     public void ManualRegionIsStoredForUnknownItemName()
     {
         var store = new CaptureStore(Path.Combine(directory, "manual-region.db"));

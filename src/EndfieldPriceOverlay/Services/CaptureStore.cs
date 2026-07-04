@@ -37,14 +37,23 @@ public sealed class CaptureStore
         using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO captures(captured_at, item_name, prices_json, region)
-            VALUES ($capturedAt, $itemName, $prices, $region)
-            RETURNING id;
+            VALUES ($capturedAt, $itemName, $prices, $region);
             """;
         command.Parameters.AddWithValue("$capturedAt", reading.CapturedAt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture));
         command.Parameters.AddWithValue("$itemName", CleanName(reading.ItemName));
         command.Parameters.AddWithValue("$prices", JsonSerializer.Serialize(reading.Prices));
         command.Parameters.AddWithValue("$region", (object?)ResolveRegion(reading) ?? DBNull.Value);
-        return (long)(command.ExecuteScalar() ?? throw new InvalidOperationException("保存记录失败。"));
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("保存记录失败。");
+        }
+
+        // Windows 自带的 SQLite 可能早于支持 RETURNING 的版本。
+        command.Parameters.Clear();
+        command.CommandText = "SELECT last_insert_rowid();";
+        return Convert.ToInt64(
+            command.ExecuteScalar() ?? throw new InvalidOperationException("无法获取已保存记录的编号。"),
+            CultureInfo.InvariantCulture);
     }
 
     public void Update(long captureId, CaptureReading reading)
