@@ -104,4 +104,5 @@ public sealed record PredictionStatus(
     PredictionState State,
     string Message,
     IReadOnlyList<FuturePrice> Future,
-    IReadOnlyList<FutureRange> Ranges);
+    IReadOnlyList<FutureRange> Ranges,
+    int? RequiredFutureDays = null);

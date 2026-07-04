@@ -12,7 +12,7 @@ public sealed class PredictionStatusService(
         var dated = store.GetDatedPrices(itemName);
         if (dated.Count == 0)
         {
-            return new(PredictionState.Insufficient, "还没有价格记录", [], []);
+            return NeedCompleteWeek(today);
         }
 
         var currentMonday = MondayOf(today);
@@ -33,25 +33,34 @@ public sealed class PredictionStatusService(
         var analysis = prediction.AnalyzeSafe(records);
         if (analysis is null)
         {
-            return new(PredictionState.Insufficient, "还没有足够的价格记录", [], []);
+            return NeedCompleteWeek(today);
         }
 
         var completeCount = weeks.Values.Count(week => week.All(value => value is not null));
         if (analysis.Stage == AnalysisStage.FirstWeek)
         {
-            var message = completeCount == 0
-                ? "先补齐任意一周的 7 天价格"
-                : "已有完整周；下周再记录 1～2 天即可校准";
-            return new(PredictionState.Insufficient, message, [], []);
+            if (completeCount == 0)
+            {
+                return NeedCompleteWeek(today);
+            }
+
+            var days = 7 - WeekdayIndex(today);
+            return new(
+                PredictionState.Insufficient,
+                $"已有一周完整数据；还需未来 {days} 天的数据，到下周一再次记录即可开始跨周校准",
+                [],
+                [],
+                days);
         }
 
         if (analysis.Stage != AnalysisStage.Locked)
         {
             return new(
                 PredictionState.Pending,
-                $"ε 尚有 {analysis.CandidateCount} 个候选，继续记录新的价格",
+                $"ε 尚有 {analysis.CandidateCount} 个候选；预计还需未来 1 天的数据，若仍未收敛再补 1 天",
                 [],
-                []);
+                [],
+                1);
         }
 
         var survivors = prediction.FilterCurrentWeek(analysis.EightPredictions, current)
@@ -70,7 +79,8 @@ public sealed class PredictionStatusService(
                 PredictionState.Ready,
                 future.Length > 0 ? "本周走势已确定" : "本周已结束；下周模板将在周一重新随机",
                 future,
-                []);
+                [],
+                0);
         }
 
         var ranges = futureIndexes.Select(index => new FutureRange(
@@ -80,9 +90,19 @@ public sealed class PredictionStatusService(
             survivors.Max(item => item.Prices[index]))).ToArray();
         return new(
             PredictionState.Filtering,
-            $"ε 已锁定，本周走势还剩 {survivors.Length} 种；再记录一天可继续排除",
+            $"ε 已锁定，本周走势还剩 {survivors.Length} 种；还需未来 1 天的数据以继续排除",
             [],
-            ranges);
+            ranges,
+            1);
+    }
+
+    private static PredictionStatus NeedCompleteWeek(DateOnly today)
+    {
+        var days = 6 - WeekdayIndex(today);
+        var message = days == 0
+            ? "今天再次记录即可补齐一周完整数据"
+            : $"还需未来 {days} 天的数据；记录到星期日即可形成一周完整价格";
+        return new(PredictionState.Insufficient, message, [], [], days);
     }
 
     private static SortedDictionary<DateOnly, int?[]> GroupWeeks(IReadOnlyDictionary<DateOnly, int> dated)
