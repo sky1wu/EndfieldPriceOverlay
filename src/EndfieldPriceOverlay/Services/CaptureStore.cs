@@ -112,7 +112,7 @@ public sealed class CaptureStore
         var values = new SortedDictionary<DateOnly, int>();
         while (reader.Read())
         {
-            var captured = DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture).Date;
+            var captured = GameCalendar.DateAt(DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture));
             var prices = JsonSerializer.Deserialize<int[]>(reader.GetString(1))
                 ?? throw new InvalidDataException("价格记录格式无效。");
             if (prices.Length != 7)
@@ -122,7 +122,7 @@ public sealed class CaptureStore
 
             for (var index = 0; index < 7; index++)
             {
-                values[DateOnly.FromDateTime(captured.AddDays(index - 6))] = prices[index];
+                values[captured.AddDays(index - 6)] = prices[index];
             }
         }
 

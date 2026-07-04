@@ -25,6 +25,21 @@ public sealed class CaptureStoreTests : IDisposable
     }
 
     [Fact]
+    public void CaptureBeforeFourAmBelongsToPreviousGameDate()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "before-reset.db"));
+        store.Save(new CaptureReading(
+            "商品",
+            [1000, 1100, 1200, 1300, 1400, 1500, 1600],
+            new DateTime(2026, 7, 4, 3, 59, 59)));
+
+        var values = store.GetDatedPrices("商品");
+
+        Assert.Equal(1600, values[new DateOnly(2026, 7, 3)]);
+        Assert.DoesNotContain(new DateOnly(2026, 7, 4), values.Keys);
+    }
+
+    [Fact]
     public void LatestCaptureWinsForSameDate()
     {
         var store = new CaptureStore(Path.Combine(directory, "prices.db"));

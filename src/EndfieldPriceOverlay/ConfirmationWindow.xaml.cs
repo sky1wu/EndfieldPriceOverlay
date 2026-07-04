@@ -21,7 +21,7 @@ public partial class ConfirmationWindow : Window
         NameBox.Text = reading.ItemName;
         fields = Enumerable.Range(0, 7).Select(index =>
         {
-            var date = DateOnly.FromDateTime(reading.CapturedAt.Date.AddDays(index - 6));
+            var date = GameCalendar.DateAt(reading.CapturedAt).AddDays(index - 6);
             return new PriceField(
                 date.ToString("MM/dd", CultureInfo.InvariantCulture),
                 WeekdayName(date.DayOfWeek),

@@ -8,7 +8,7 @@ public sealed class PredictionStatusService(
 {
     public PredictionStatus Get(string itemName, DateOnly? day = null)
     {
-        var today = day ?? DateOnly.FromDateTime(DateTime.Today);
+        var today = day ?? GameCalendar.DateAt(DateTime.Now);
         var dated = store.GetDatedPrices(itemName);
         if (dated.Count == 0)
         {
