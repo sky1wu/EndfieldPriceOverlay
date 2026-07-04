@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using EndfieldPriceOverlay.Domain;
 using EndfieldPriceOverlay.Services;
 
@@ -57,11 +58,8 @@ public partial class MainWindow : Window
         StatusText.Text = "正在截取 Endfield 窗口并进行离线 OCR…";
         try
         {
-            var reading = await Task.Run(() =>
-            {
-                var frame = capture.Capture();
-                return ocr.Recognize(frame.Image, layoutConfig.Load());
-            });
+            var frame = await CaptureWithoutOverlayAsync();
+            var reading = await Task.Run(() => ocr.Recognize(frame.Image, layoutConfig.Load()));
             var dialog = new ConfirmationWindow(reading) { Owner = this };
             if (dialog.ShowDialog() != true || dialog.Reading is null)
             {
@@ -90,7 +88,7 @@ public partial class MainWindow : Window
         StatusText.Text = "正在读取 Endfield 窗口…";
         try
         {
-            var frame = await Task.Run(() => capture.Capture());
+            var frame = await CaptureWithoutOverlayAsync();
             var dialog = new CalibrationWindow(frame.Image) { Owner = this };
             if (dialog.ShowDialog() == true && dialog.Layout is not null)
             {
@@ -106,6 +104,30 @@ public partial class MainWindow : Window
         {
             StatusText.Text = exception.Message;
             MessageBox.Show(this, exception.Message, "无法校准", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task<CapturedFrame> CaptureWithoutOverlayAsync()
+    {
+        var restoreWindow = IsVisible;
+        if (restoreWindow)
+        {
+            Hide();
+            await Dispatcher.InvokeAsync(static () => { }, DispatcherPriority.ApplicationIdle);
+            await Task.Delay(100);
+        }
+
+        try
+        {
+            return await Task.Run(() => capture.Capture());
+        }
+        finally
+        {
+            if (restoreWindow)
+            {
+                Show();
+                Activate();
+            }
         }
     }
 
