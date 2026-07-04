@@ -40,6 +40,15 @@ dotnet test .\EndfieldPriceOverlay.slnx
 .\scripts\publish.ps1
 ```
 
+## 发布
+
+推送语义化版本标签后，GitHub Actions 会运行测试，生成开箱即用的 Windows x64 自包含压缩包及 SHA-256 校验文件，并创建 GitHub Release：
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 主要目录：
 
 ```text

@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore .\EndfieldPriceOverlay.slnx
+
+      - name: Test
+        run: dotnet test .\EndfieldPriceOverlay.slnx --configuration Release --no-restore
+
+      - name: Publish self-contained app
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          dotnet publish .\src\EndfieldPriceOverlay\EndfieldPriceOverlay.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=false `
+            -p:Version=$version `
+            --output .\artifacts\publish\win-x64
+
+      - name: Package release
+        shell: pwsh
+        run: |
+          $packageName = "EndfieldPriceOverlay-${{ github.ref_name }}-win-x64"
+          $archive = ".\artifacts\$packageName.zip"
+          Compress-Archive -Path ".\artifacts\publish\win-x64\*" -DestinationPath $archive -Force
+
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $packageName.zip" | Set-Content -LiteralPath "$archive.sha256" -Encoding ascii
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $packageName = "EndfieldPriceOverlay-${{ github.ref_name }}-win-x64"
+          gh release create "${{ github.ref_name }}" `
+            ".\artifacts\$packageName.zip" `
+            ".\artifacts\$packageName.zip.sha256" `
+            --title "EndfieldPriceOverlay ${{ github.ref_name }}" `
+            --generate-notes `
+            --verify-tag
