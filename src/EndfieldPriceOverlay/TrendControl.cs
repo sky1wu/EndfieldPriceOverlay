@@ -21,6 +21,12 @@ public sealed class TrendControl : FrameworkElement
         typeof(TrendControl),
         new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty ShowGridProperty = DependencyProperty.Register(
+        nameof(ShowGrid),
+        typeof(bool),
+        typeof(TrendControl),
+        new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public IEnumerable? Values
     {
         get => (IEnumerable?)GetValue(ValuesProperty);
@@ -31,6 +37,12 @@ public sealed class TrendControl : FrameworkElement
     {
         get => (bool)GetValue(ShowLabelsProperty);
         set => SetValue(ShowLabelsProperty, value);
+    }
+
+    public bool ShowGrid
+    {
+        get => (bool)GetValue(ShowGridProperty);
+        set => SetValue(ShowGridProperty, value);
     }
 
     public double StrokeThickness { get; set; } = 1.5;
@@ -48,12 +60,15 @@ public sealed class TrendControl : FrameworkElement
         var plotRight = ShowLabels ? Math.Max(plotLeft + 1, ActualWidth - 12) : ActualWidth;
         var plotTop = ShowLabels ? 28d : 3d;
         var plotBottom = ShowLabels ? Math.Max(plotTop + 1, ActualHeight - 30) : ActualHeight - 3;
-        var gridBrush = FrozenBrush(Color.FromRgb(35, 48, 41));
-        var gridPen = new Pen(gridBrush, 1);
-        for (var index = 0; index < 3; index++)
+        if (ShowGrid)
         {
-            var y = plotTop + (plotBottom - plotTop) * index / 2;
-            drawingContext.DrawLine(gridPen, new Point(plotLeft, y), new Point(plotRight, y));
+            var gridBrush = FrozenBrush(Color.FromRgb(35, 48, 41));
+            var gridPen = new Pen(gridBrush, 1);
+            for (var index = 0; index < 3; index++)
+            {
+                var y = plotTop + (plotBottom - plotTop) * index / 2;
+                drawingContext.DrawLine(gridPen, new Point(plotLeft, y), new Point(plotRight, y));
+            }
         }
 
         var minimum = values.Min(value => value.Price);

@@ -9,11 +9,15 @@ public partial class ConfirmationWindow : Window
 {
     private readonly OcrReading source;
     private readonly PriceField[] fields;
+    private readonly string initialItemName;
+    private readonly string? previousRegion;
 
-    public ConfirmationWindow(OcrReading reading)
+    public ConfirmationWindow(OcrReading reading, string? previousRegion = null)
     {
-        InitializeComponent();
         source = reading;
+        initialItemName = NormalizeName(reading.ItemName);
+        this.previousRegion = previousRegion;
+        InitializeComponent();
         NameBox.Text = reading.ItemName;
         fields = Enumerable.Range(0, 7).Select(index =>
         {
@@ -27,6 +31,7 @@ public partial class ConfirmationWindow : Window
         HintText.Text = reading.IsConfident
             ? "识别完成，请核对商品名与 7 天价格"
             : "识别结果不完整，请补全或修正后记录";
+        UpdateRegionFromName();
     }
 
     public CaptureReading? Reading { get; private set; }
@@ -52,9 +57,53 @@ public partial class ConfirmationWindow : Window
             return;
         }
 
-        Reading = new CaptureReading(NameBox.Text.Trim(), prices, source.CapturedAt);
+        var region = SelectedRegion();
+        if (region is null)
+        {
+            MessageBox.Show(this, "无法自动判断地区，请选择四号谷地或武陵。", "无法记录");
+            return;
+        }
+
+        Reading = new CaptureReading(NameBox.Text.Trim(), prices, source.CapturedAt, Region: region);
         DialogResult = true;
     }
+
+    private void NameBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => UpdateRegionFromName();
+
+    private void UpdateRegionFromName()
+    {
+        if (RegionChoices is null)
+        {
+            return;
+        }
+
+        var automaticRegion = ItemRegionCatalog.TryClassify(NameBox.Text);
+        var savedRegion = automaticRegion is null && NormalizeName(NameBox.Text) == initialItemName
+            ? previousRegion
+            : null;
+        var selectedRegion = automaticRegion ?? savedRegion;
+        RegionChoices.IsEnabled = automaticRegion is null;
+        ValleyIvOption.IsChecked = selectedRegion == ItemRegionCatalog.ValleyIv;
+        WulingOption.IsChecked = selectedRegion == ItemRegionCatalog.Wuling;
+        RegionHintText.Text = automaticRegion is not null
+            ? "已自动归类"
+            : savedRegion is not null
+                ? "已沿用上次选择"
+                : "请选择地区";
+        RegionHintText.Foreground = selectedRegion is null
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xD5, 0xA8, 0x36))
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x71, 0x84, 0x7A));
+    }
+
+    private string? SelectedRegion() =>
+        ValleyIvOption.IsChecked == true
+            ? ItemRegionCatalog.ValleyIv
+            : WulingOption.IsChecked == true
+                ? ItemRegionCatalog.Wuling
+                : null;
+
+    private static string NormalizeName(string name) =>
+        string.Concat(name.Where(character => !char.IsWhiteSpace(character)));
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
 

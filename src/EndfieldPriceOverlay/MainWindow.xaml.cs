@@ -1,8 +1,12 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using EndfieldPriceOverlay.Domain;
@@ -16,8 +20,10 @@ public partial class MainWindow : Window
     private readonly PricePredictionService prediction = new();
     private readonly LayoutConfigService layoutConfig = new();
     private readonly WindowCaptureService capture = new();
+    private readonly Dictionary<string, bool> regionExpansion = new(StringComparer.Ordinal);
     private readonly OcrService ocr;
     private readonly PredictionStatusService predictionStatus;
+    private string? stickyRegion;
 
     public MainWindow()
     {
@@ -35,16 +41,23 @@ public partial class MainWindow : Window
     private void RefreshItems(string? selectName = null)
     {
         var rows = store.GetItemSummaries()
+            .Where(item => ItemRegionCatalog.IsKnownRegion(item.Region))
             .Select(item => new ItemRow(
                 item.Name,
+                item.Region!,
                 $"{item.LatestDate:MM/dd} · {item.LatestPrice} · {item.RecordedDays} 天",
                 item.Trend.Select(pair => pair.Value).ToArray(),
                 item.Trend.TakeLast(7).Select(pair => new TrendDatum(pair.Key, pair.Value)).ToArray(),
                 item))
+            .OrderBy(row => ItemRegionCatalog.SortOrder(row.Region))
+            .ThenByDescending(row => row.Summary.LatestDate)
             .ToArray();
-        ItemsList.ItemsSource = rows;
+        var view = new ListCollectionView(rows);
+        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ItemRow.Region)));
+        ItemsList.ItemsSource = view;
         ItemCountText.Text = $"{rows.Length} ITEMS · RECENT 30 DAYS";
         ItemsList.SelectedItem = rows.FirstOrDefault(row => row.Name == selectName) ?? rows.FirstOrDefault();
+        _ = Dispatcher.InvokeAsync(UpdateStickyRegion, DispatcherPriority.Loaded);
         if (rows.Length == 0)
         {
             ShowEmptyState();
@@ -60,7 +73,7 @@ public partial class MainWindow : Window
         {
             var frame = await CaptureWithoutOverlayAsync();
             var reading = await Task.Run(() => ocr.Recognize(frame.Image, layoutConfig.Load()));
-            var dialog = new ConfirmationWindow(reading) { Owner = this };
+            var dialog = new ConfirmationWindow(reading, store.GetItemRegion(reading.ItemName)) { Owner = this };
             if (dialog.ShowDialog() != true || dialog.Reading is null)
             {
                 StatusText.Text = "已取消，本次识别未写入数据";
@@ -165,6 +178,105 @@ public partial class MainWindow : Window
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         MainTrend.BeginAnimation(OpacityProperty, reveal);
+    }
+
+    private void RegionExpander_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Expander { Tag: string region } expander)
+        {
+            return;
+        }
+
+        expander.IsExpanded = !regionExpansion.TryGetValue(region, out var expanded) || expanded;
+        _ = Dispatcher.InvokeAsync(UpdateStickyRegion, DispatcherPriority.Loaded);
+    }
+
+    private void RegionExpander_Expanded(object sender, RoutedEventArgs e) => SetRegionExpansion(sender, true);
+
+    private void RegionExpander_Collapsed(object sender, RoutedEventArgs e) => SetRegionExpansion(sender, false);
+
+    private void SetRegionExpansion(object sender, bool expanded)
+    {
+        if (sender is Expander { Tag: string region })
+        {
+            regionExpansion[region] = expanded;
+            _ = Dispatcher.InvokeAsync(UpdateStickyRegion, DispatcherPriority.Loaded);
+        }
+    }
+
+    private void ItemsList_ScrollChanged(object sender, ScrollChangedEventArgs e) => UpdateStickyRegion();
+
+    private void StickyRegionToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (stickyRegion is null)
+        {
+            return;
+        }
+
+        var expanded = StickyRegionToggle.IsChecked == true;
+        regionExpansion[stickyRegion] = expanded;
+        var expander = VisualDescendants<Expander>(ItemsList)
+            .FirstOrDefault(item => string.Equals(item.Tag as string, stickyRegion, StringComparison.Ordinal));
+        if (expander is not null)
+        {
+            expander.IsExpanded = expanded;
+        }
+
+        _ = Dispatcher.InvokeAsync(UpdateStickyRegion, DispatcherPriority.Loaded);
+    }
+
+    private void UpdateStickyRegion()
+    {
+        var headers = VisualDescendants<GroupItem>(ItemsList)
+            .Where(item => item.IsVisible && item.DataContext is CollectionViewGroup)
+            .Select(item => (
+                Group: (CollectionViewGroup)item.DataContext,
+                Top: item.TransformToAncestor(ItemsList).Transform(new Point()).Y))
+            .OrderBy(item => item.Top)
+            .ToArray();
+        if (headers.Length == 0)
+        {
+            StickyRegionHeader.Visibility = Visibility.Collapsed;
+            stickyRegion = null;
+            return;
+        }
+
+        var passedHeader = headers
+            .Where(item => item.Top <= 1)
+            .OrderByDescending(item => item.Top)
+            .FirstOrDefault();
+        if (passedHeader.Group is null)
+        {
+            if (stickyRegion is not null)
+            {
+                return;
+            }
+
+            passedHeader = headers[0];
+        }
+
+        stickyRegion = passedHeader.Group.Name?.ToString();
+        StickyRegionToggle.Content = passedHeader.Group;
+        StickyRegionToggle.IsChecked = stickyRegion is not null
+            && (!regionExpansion.TryGetValue(stickyRegion, out var expanded) || expanded);
+        StickyRegionHeader.Visibility = Visibility.Visible;
+    }
+
+    private static IEnumerable<T> VisualDescendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in VisualDescendants<T>(child))
+            {
+                yield return descendant;
+            }
+        }
     }
 
     private void ShowEmptyState()
@@ -279,7 +391,13 @@ public partial class MainWindow : Window
         int height,
         uint flags);
 
-    private sealed record ItemRow(string Name, string Detail, int[] Prices, TrendDatum[] Trend, ItemSummary Summary);
+    private sealed record ItemRow(
+        string Name,
+        string Region,
+        string Detail,
+        int[] Prices,
+        TrendDatum[] Trend,
+        ItemSummary Summary);
 
     private sealed record ForecastRow(string DateText, string DayText, string ValueText);
 }

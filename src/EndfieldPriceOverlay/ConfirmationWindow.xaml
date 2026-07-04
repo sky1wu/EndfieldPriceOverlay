@@ -1,7 +1,7 @@
 <Window x:Class="EndfieldPriceOverlay.ConfirmationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="确认识别结果" Width="680" Height="330" ResizeMode="NoResize"
+        Title="确认识别结果" Width="680" Height="390" ResizeMode="NoResize"
         WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
         Background="#111916" Foreground="#EAF1EC">
     <Window.Resources>
@@ -16,9 +16,39 @@
             <Setter Property="Padding" Value="18,9" />
             <Setter Property="Margin" Value="8,0,0,0" />
         </Style>
+        <Style x:Key="RegionChoice" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#AAB9B1" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ChoiceBorder" Padding="14,7"
+                                Background="#17211C" BorderBrush="#34433B" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ChoiceBorder" Property="Background" Value="#213027" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ChoiceBorder" Property="Background" Value="#26351D" />
+                                <Setter TargetName="ChoiceBorder" Property="BorderBrush" Value="#A9E52E" />
+                                <Setter Property="Foreground" Value="#DDF4AF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Cursor" Value="Arrow" />
+                                <Setter Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid Margin="24">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -28,8 +58,26 @@
             <TextBlock Text="确认识别结果" FontSize="21" FontWeight="SemiBold" />
             <TextBlock x:Name="HintText" Margin="0,5,0,0" Foreground="#D5A836" />
         </StackPanel>
-        <TextBox x:Name="NameBox" Grid.Row="1" Margin="0,18,0,14" FontSize="16" />
-        <ItemsControl x:Name="PriceFields" Grid.Row="2">
+        <TextBox x:Name="NameBox" Grid.Row="1" Margin="0,18,0,12" FontSize="16"
+                 TextChanged="NameBox_TextChanged" />
+        <Grid Grid.Row="2" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="所属地区" Margin="0,0,14,0" VerticalAlignment="Center"
+                       Foreground="#879A90" FontSize="11" />
+            <StackPanel x:Name="RegionChoices" Grid.Column="1" Orientation="Horizontal">
+                <RadioButton x:Name="ValleyIvOption" Content="四号谷地" GroupName="Region"
+                             Style="{StaticResource RegionChoice}" />
+                <RadioButton x:Name="WulingOption" Content="武陵" GroupName="Region"
+                             Style="{StaticResource RegionChoice}" />
+            </StackPanel>
+            <TextBlock x:Name="RegionHintText" Grid.Column="2" Margin="8,0,0,0"
+                       VerticalAlignment="Center" Foreground="#71847A" FontSize="10" />
+        </Grid>
+        <ItemsControl x:Name="PriceFields" Grid.Row="3">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <UniformGrid Rows="1" Columns="7" />
@@ -45,7 +93,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="取消" Click="Cancel_Click" />
             <Button Content="确认记录" Background="#A9E52E" Foreground="#0B100E" BorderBrush="#A9E52E" Click="Confirm_Click" />
         </StackPanel>

@@ -36,13 +36,14 @@ public sealed class CaptureStore
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO captures(captured_at, item_name, prices_json)
-            VALUES ($capturedAt, $itemName, $prices)
+            INSERT INTO captures(captured_at, item_name, prices_json, region)
+            VALUES ($capturedAt, $itemName, $prices, $region)
             RETURNING id;
             """;
         command.Parameters.AddWithValue("$capturedAt", reading.CapturedAt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture));
         command.Parameters.AddWithValue("$itemName", CleanName(reading.ItemName));
         command.Parameters.AddWithValue("$prices", JsonSerializer.Serialize(reading.Prices));
+        command.Parameters.AddWithValue("$region", (object?)ResolveRegion(reading) ?? DBNull.Value);
         return (long)(command.ExecuteScalar() ?? throw new InvalidOperationException("保存记录失败。"));
     }
 
@@ -53,12 +54,13 @@ public sealed class CaptureStore
         using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE captures
-            SET captured_at=$capturedAt, item_name=$itemName, prices_json=$prices
+            SET captured_at=$capturedAt, item_name=$itemName, prices_json=$prices, region=$region
             WHERE id=$id;
             """;
         command.Parameters.AddWithValue("$capturedAt", reading.CapturedAt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture));
         command.Parameters.AddWithValue("$itemName", CleanName(reading.ItemName));
         command.Parameters.AddWithValue("$prices", JsonSerializer.Serialize(reading.Prices));
+        command.Parameters.AddWithValue("$region", (object?)ResolveRegion(reading) ?? DBNull.Value);
         command.Parameters.AddWithValue("$id", captureId);
         if (command.ExecuteNonQuery() == 0)
         {
@@ -124,8 +126,32 @@ public sealed class CaptureStore
             var dated = GetDatedPrices(name);
             var trend = dated.TakeLast(trendDays).ToArray();
             var latest = trend[^1];
-            return new ItemSummary(name, latest.Key, latest.Value, dated.Count, trend);
+            return new ItemSummary(name, latest.Key, latest.Value, dated.Count, trend, GetItemRegion(name));
         }).ToArray();
+
+    public string? GetItemRegion(string itemName)
+    {
+        var knownRegion = ItemRegionCatalog.TryClassify(itemName);
+        if (knownRegion is not null)
+        {
+            return knownRegion;
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT region
+            FROM captures
+            WHERE item_name=$itemName AND region IS NOT NULL
+            ORDER BY captured_at DESC, id DESC
+            LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$itemName", CleanName(itemName));
+        return command.ExecuteScalar() as string;
+    }
+
+    private static string? ResolveRegion(CaptureReading reading) =>
+        ItemRegionCatalog.TryClassify(reading.ItemName) ?? reading.Region;
 
     private static string CleanName(string name) => string.Concat(name.Where(character => !char.IsWhiteSpace(character))).Trim();
 
@@ -140,6 +166,11 @@ public sealed class CaptureStore
         {
             throw new ArgumentException("必须提供 7 个 300～5500 范围内的价格。");
         }
+
+        if (reading.Region is not null && !ItemRegionCatalog.IsKnownRegion(reading.Region))
+        {
+            throw new ArgumentException("地区必须是四号谷地或武陵。");
+        }
     }
 
     private void Initialize()
@@ -151,12 +182,39 @@ public sealed class CaptureStore
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 captured_at TEXT NOT NULL,
                 item_name TEXT NOT NULL,
-                prices_json TEXT NOT NULL
+                prices_json TEXT NOT NULL,
+                region TEXT NULL
             );
+            """;
+        command.ExecuteNonQuery();
+
+        if (!HasColumn(connection, "captures", "region"))
+        {
+            command.CommandText = "ALTER TABLE captures ADD COLUMN region TEXT NULL;";
+            command.ExecuteNonQuery();
+        }
+
+        command.CommandText = """
             CREATE INDEX IF NOT EXISTS idx_captures_item_time
                 ON captures(item_name, captured_at);
             """;
         command.ExecuteNonQuery();
+    }
+
+    private static bool HasColumn(SqliteConnection connection, string tableName, string columnName)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({tableName});";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private SqliteConnection OpenConnection()

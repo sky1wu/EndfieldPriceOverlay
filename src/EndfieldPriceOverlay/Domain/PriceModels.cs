@@ -58,7 +58,8 @@ public sealed record CaptureReading(
     int[] Prices,
     DateTime CapturedAt,
     double NameConfidence = 1,
-    IReadOnlyList<double>? PriceConfidences = null);
+    IReadOnlyList<double>? PriceConfidences = null,
+    string? Region = null);
 
 public sealed record OcrReading(
     string ItemName,
@@ -86,7 +87,8 @@ public sealed record ItemSummary(
     DateOnly LatestDate,
     int LatestPrice,
     int RecordedDays,
-    IReadOnlyList<KeyValuePair<DateOnly, int>> Trend);
+    IReadOnlyList<KeyValuePair<DateOnly, int>> Trend,
+    string? Region = null);
 
 public enum PredictionState
 {

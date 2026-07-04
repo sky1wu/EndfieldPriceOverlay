@@ -10,6 +10,152 @@
         <SolidColorBrush x:Key="Accent" Color="#A9E52E" />
         <SolidColorBrush x:Key="Panel" Color="#121A16" />
         <SolidColorBrush x:Key="Line" Color="#28332D" />
+        <Style x:Key="ScrollPageButton" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ScrollThumb" TargetType="Thumb">
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Background" Value="#61756A" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid Background="Transparent">
+                            <Border x:Name="ThumbBody" Width="4" Margin="0,1"
+                                    HorizontalAlignment="Center"
+                                    Background="{TemplateBinding Background}" CornerRadius="2" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbBody" Property="Background" Value="#92C82B" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbBody" Property="Background" Value="{StaticResource Accent}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ItemListScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Margin" Value="4,2,0,2" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Border x:Name="Rail" Width="2" HorizontalAlignment="Center"
+                                    Background="#24322A" CornerRadius="1" />
+                            <Track x:Name="PART_Track" Margin="0,3" Orientation="Vertical"
+                                   IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource ScrollPageButton}"
+                                                  Command="{x:Static ScrollBar.PageUpCommand}" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ScrollThumb}" />
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource ScrollPageButton}"
+                                                  Command="{x:Static ScrollBar.PageDownCommand}" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Rail" Property="Background" Value="#34463C" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="RegionHeaderContent">
+            <Grid Margin="8,0,8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Width="3" Height="12" Margin="0,0,8,0"
+                        Background="{StaticResource Accent}" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                           Foreground="#AEBDB5" FontSize="11" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="2" Text="{Binding ItemCount, StringFormat={}{0} ITEMS}"
+                           VerticalAlignment="Center" Foreground="#596D62" FontSize="9" />
+            </Grid>
+        </DataTemplate>
+        <Style x:Key="RegionHeaderToggle" TargetType="ToggleButton">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Background" Value="#101713" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="HeaderSurface" Background="{TemplateBinding Background}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="24" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  VerticalAlignment="Stretch" />
+                                <TextBlock x:Name="Chevron" Grid.Column="1" Text="›"
+                                           Foreground="#71847A" FontSize="16"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HeaderSurface" Property="Background" Value="#17211C" />
+                                <Setter TargetName="Chevron" Property="Foreground" Value="{StaticResource Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="HeaderSurface" Property="Background" Value="#17211C" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chevron" Property="Text" Value="⌄" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="RegionExpander" TargetType="Expander">
+            <Setter Property="Foreground" Value="#EEF4F0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton Style="{StaticResource RegionHeaderToggle}"
+                                          Content="{TemplateBinding Header}"
+                                          ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                            <ContentPresenter x:Name="ExpandSite" ContentSource="Content" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="False">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="Button">
             <Setter Property="Foreground" Value="#EAF1EC" />
             <Setter Property="Background" Value="#1B2721" />
@@ -113,53 +259,94 @@
                         </StackPanel>
                         <Button Grid.Column="1" Content="刷新" Padding="12,6" VerticalAlignment="Center" Click="Refresh_Click" />
                     </Grid>
-                    <ListBox x:Name="ItemsList" Grid.Row="1" Margin="12,0,12,14"
-                             Background="Transparent" BorderThickness="0" Foreground="#EEF4F0"
-                             SelectionChanged="ItemsList_SelectionChanged">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                <Setter Property="Padding" Value="0" />
-                                <Setter Property="Margin" Value="0,0,0,5" />
-                                <Setter Property="Background" Value="Transparent" />
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListBoxItem">
-                                            <Border x:Name="Root" Padding="12" Background="{TemplateBinding Background}"
-                                                    BorderBrush="#253129" BorderThickness="0,0,0,1">
-                                                <ContentPresenter />
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsSelected" Value="True">
-                                                    <Setter TargetName="Root" Property="Background" Value="#1A251F" />
-                                                    <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Accent}" />
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Root" Property="Background" Value="#17201B" />
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="110" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Detail}" Foreground="#768A7F" FontSize="10" Margin="0,5,0,0" />
-                                    </StackPanel>
-                                    <local:TrendControl Grid.Column="1" Height="38" Margin="10,0,0,0"
-                                                        Values="{Binding Prices}" />
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <Grid Grid.Row="1" Margin="12,0,12,14">
+                        <ListBox x:Name="ItemsList"
+                                 Background="Transparent" BorderThickness="0" Foreground="#EEF4F0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                                 ScrollViewer.ScrollChanged="ItemsList_ScrollChanged"
+                                 SelectionChanged="ItemsList_SelectionChanged">
+                            <ListBox.Resources>
+                                <Style TargetType="ScrollBar" BasedOn="{StaticResource ItemListScrollBar}" />
+                            </ListBox.Resources>
+                            <ListBox.GroupStyle>
+                                <GroupStyle>
+                                    <GroupStyle.ContainerStyle>
+                                        <Style TargetType="GroupItem">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="GroupItem">
+                                                        <Expander Tag="{Binding Name}" Header="{Binding}"
+                                                                  HeaderTemplate="{StaticResource RegionHeaderContent}"
+                                                                  Style="{StaticResource RegionExpander}"
+                                                                  Loaded="RegionExpander_Loaded"
+                                                                  Expanded="RegionExpander_Expanded"
+                                                                  Collapsed="RegionExpander_Collapsed">
+                                                            <ItemsPresenter />
+                                                        </Expander>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </GroupStyle.ContainerStyle>
+                                </GroupStyle>
+                            </ListBox.GroupStyle>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0,0,0,5" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Grid x:Name="Root" Background="{TemplateBinding Background}">
+                                                    <Border x:Name="SelectionBar" Width="3" Margin="0,8,0,8"
+                                                            HorizontalAlignment="Left" Background="{StaticResource Accent}"
+                                                            Visibility="Collapsed" />
+                                                    <ContentPresenter Margin="12" />
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Root" Property="Background" Value="#1A251F" />
+                                                        <Setter TargetName="SelectionBar" Property="Visibility" Value="Visible" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Root" Property="Background" Value="#17201B" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="110" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Detail}" Foreground="#768A7F" FontSize="10" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                        <local:TrendControl Grid.Column="1" Height="38" Margin="10,0,0,0"
+                                                            Values="{Binding Prices}" ShowGrid="False" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Border x:Name="StickyRegionHeader" Height="38" Margin="0,0,10,0"
+                                VerticalAlignment="Top" Panel.ZIndex="2" Visibility="Collapsed"
+                                Background="#101713">
+                            <ToggleButton x:Name="StickyRegionToggle"
+                                          Style="{StaticResource RegionHeaderToggle}"
+                                          ContentTemplate="{StaticResource RegionHeaderContent}"
+                                          Click="StickyRegionToggle_Click" />
+                        </Border>
+                    </Grid>
                 </Grid>
 
                 <Border Grid.Column="1" Background="{StaticResource Line}" />

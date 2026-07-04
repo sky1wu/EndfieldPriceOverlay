@@ -1,5 +1,6 @@
 using EndfieldPriceOverlay.Domain;
 using EndfieldPriceOverlay.Services;
+using Microsoft.Data.Sqlite;
 using System.IO;
 
 namespace EndfieldPriceOverlay.Tests;
@@ -31,6 +32,50 @@ public sealed class CaptureStoreTests : IDisposable
         store.Save(new CaptureReading("商品", [1001, 1101, 1201, 1301, 1401, 1501, 1601], new DateTime(2026, 7, 4, 13, 0, 0)));
 
         Assert.Equal(1601, store.GetDatedPrices("商品")[new DateOnly(2026, 7, 4)]);
+    }
+
+    [Fact]
+    public void ManualRegionIsStoredForUnknownItemName()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "manual-region.db"));
+        store.Save(new CaptureReading(
+            "新货物",
+            [1000, 1100, 1200, 1300, 1400, 1500, 1600],
+            new DateTime(2026, 7, 4, 12, 0, 0),
+            Region: ItemRegionCatalog.Wuling));
+
+        Assert.Equal(ItemRegionCatalog.Wuling, store.GetItemSummaries().Single().Region);
+        Assert.Equal(ItemRegionCatalog.Wuling, store.GetItemRegion("新货物"));
+    }
+
+    [Fact]
+    public void ExistingDatabaseIsMigratedBeforeRegionIsStored()
+    {
+        _ = new CaptureStore(Path.Combine(directory, "provider-bootstrap.db"));
+        var databasePath = Path.Combine(directory, "legacy.db");
+        using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE captures (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    captured_at TEXT NOT NULL,
+                    item_name TEXT NOT NULL,
+                    prices_json TEXT NOT NULL
+                );
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        var store = new CaptureStore(databasePath);
+        store.Save(new CaptureReading(
+            "新货物",
+            [1000, 1100, 1200, 1300, 1400, 1500, 1600],
+            new DateTime(2026, 7, 4, 12, 0, 0),
+            Region: ItemRegionCatalog.ValleyIv));
+
+        Assert.Equal(ItemRegionCatalog.ValleyIv, store.GetItemSummaries().Single().Region);
     }
 
     public void Dispose()
