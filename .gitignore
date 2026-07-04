@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.vs/
+bin/
+obj/
+TestResults/
+*.user
+*.suo
+artifacts/
