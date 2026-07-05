@@ -4,6 +4,7 @@
         xmlns:local="clr-namespace:EndfieldPriceOverlay"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="终末地 · 弹性需求物资分析仪"
+        Icon="Assets/AppIcon.ico"
         Width="980" Height="640" MinWidth="820" MinHeight="540"
         WindowStyle="None" ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen" Background="#0B100E">
@@ -48,21 +49,28 @@
                                 <ContentPresenter Content="{TemplateBinding Content}"
                                                   ContentTemplate="{TemplateBinding ContentTemplate}"
                                                   VerticalAlignment="Stretch" />
-                                <TextBlock x:Name="Chevron" Grid.Column="1" Text="›"
-                                           Foreground="#71847A" FontSize="16"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Path x:Name="Chevron" Grid.Column="1"
+                                      Width="6" Height="10" Data="M 1,1 L 5,5 L 1,9"
+                                      Stroke="#71847A" StrokeThickness="1.6" Stretch="None"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" RenderTransformOrigin="0.5,0.5"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="HeaderSurface" Property="Background" Value="#17211C" />
-                                <Setter TargetName="Chevron" Property="Foreground" Value="{StaticResource Accent}" />
+                                <Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource Accent}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="HeaderSurface" Property="Background" Value="#17211C" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Chevron" Property="Text" Value="⌄" />
+                                <Setter TargetName="Chevron" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="90" />
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -196,9 +204,10 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style TargetType="Separator">
+        <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
             <Setter Property="Height" Value="1" />
-            <Setter Property="Margin" Value="10,2" />
+            <Setter Property="Margin" Value="14,2" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="Background" Value="#2B3831" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -224,10 +233,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" Margin="20,0" VerticalAlignment="Center">
-                    <Border Width="30" Height="30" Background="{StaticResource Accent}" Margin="0,0,12,0">
-                        <TextBlock Text="EP" Foreground="#0B100E" FontWeight="Bold" FontSize="13"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    <Image Width="30" Height="30" Margin="0,0,12,0" Source="Assets/AppIcon.png"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
                     <StackPanel>
                         <TextBlock Text="弹性需求物资分析仪" Foreground="#F2F7F3" FontSize="17" FontWeight="SemiBold" />
                         <TextBlock Text="ELASTIC GOODS INTELLIGENCE" Foreground="#6E8377" FontSize="9" />
