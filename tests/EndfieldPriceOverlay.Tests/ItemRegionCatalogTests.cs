@@ -44,6 +44,26 @@ public sealed class ItemRegionCatalogTests
         Assert.Null(ItemRegionCatalog.TryClassify("新货物"));
     }
 
+    [Theory]
+    [InlineData("武侠电影货组", "武侠电影货组")]
+    [InlineData("武侠电影", "武侠电影货组")]
+    [InlineData("1 武侠电影货组!", "武侠电影货组")]
+    [InlineData("息壤色烟化货组", "息壤色烟花货组")]
+    [InlineData("飞天迎宾员货纽", "飞天迎宾员货组")]
+    public void MatchesOcrItemNames(string recognized, string expected)
+    {
+        Assert.Equal(expected, ItemRegionCatalog.MatchItemName(ItemRegionCatalog.Wuling, recognized));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("货组")]
+    [InlineData("完全无关的文字")]
+    public void RejectsAmbiguousOrUnrelatedOcrItemNames(string recognized)
+    {
+        Assert.Null(ItemRegionCatalog.MatchItemName(ItemRegionCatalog.Wuling, recognized));
+    }
+
     [Fact]
     public void RegionItemsFollowMarketOverviewCardOrder()
     {

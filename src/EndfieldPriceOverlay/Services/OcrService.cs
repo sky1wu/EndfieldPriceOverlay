@@ -74,8 +74,7 @@ public sealed partial class OcrService : IDisposable
         using var headerCrop = Crop(bitmap, MarketOverviewLayout.Header);
         var headerText = string.Concat(Detect(headerCrop).Select(block => block.Text));
         var region = DetectRegion(headerText);
-        var prices = new int?[MarketOverviewLayout.SlotCount];
-        var scores = new double?[MarketOverviewLayout.SlotCount];
+        var slots = new MarketOverviewSlot[MarketOverviewLayout.SlotCount];
         var rowBottoms = MarketOverviewLocator.LocateRowBottoms(bitmap);
         var slotsToRead = region == ItemRegionCatalog.Wuling
             ? ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count
@@ -85,29 +84,39 @@ public sealed partial class OcrService : IDisposable
         {
             var row = index / MarketOverviewLayout.ColumnCount;
             using var priceCrop = Crop(bitmap, MarketOverviewLayout.PriceSlot(index, rowBottoms[row]));
-            var candidate = Detect(priceCrop)
+            var priceCandidate = Detect(priceCrop)
                 .Select(block => (Block: block, Price: ParsePrice(block.Text)))
                 .Where(item => item.Price is not null)
                 .OrderByDescending(item => item.Block.CenterY)
                 .ThenByDescending(item => item.Block.Score)
                 .FirstOrDefault();
-            if (candidate.Price is not null)
-            {
-                prices[index] = candidate.Price;
-                scores[index] = candidate.Block.Score;
-            }
+            using var nameCrop = Crop(bitmap, MarketOverviewLayout.NameSlot(index, rowBottoms[row]));
+            var nameBlocks = Detect(nameCrop)
+                .Where(block => HasChinese().IsMatch(block.Text))
+                .OrderBy(block => block.CenterY)
+                .ThenBy(block => block.CenterX)
+                .ToArray();
+            var itemName = string.Concat(nameBlocks.Select(block => block.Text));
+            slots[index] = new MarketOverviewSlot(
+                string.IsNullOrWhiteSpace(itemName) ? null : itemName,
+                priceCandidate.Price,
+                nameBlocks.Length == 0 ? null : nameBlocks.Average(block => block.Score),
+                priceCandidate.Price is null ? null : priceCandidate.Block.Score);
         }
 
-        var detectedCount = prices.Count(price => price is not null);
+        var detectedCount = slots.Count(slot => slot?.Price is not null);
         if (detectedCount < 5)
         {
             throw new InvalidOperationException("未识别到物资总览。请打开弹性需求物资的地区调度页面，并确保价格卡片完整可见。");
         }
 
-        region ??= prices.Skip(ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count).Any(price => price is not null)
+        region ??= slots.Skip(ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count).Any(slot => slot?.Price is not null)
             ? ItemRegionCatalog.ValleyIv
             : ItemRegionCatalog.Wuling;
-        return new MarketOverviewReading(region, prices, DateTime.Now, scores);
+        return new MarketOverviewReading(
+            region,
+            slots.Select(slot => slot ?? new MarketOverviewSlot(null, null, null, null)).ToArray(),
+            DateTime.Now);
     }
 
     public void Dispose()
@@ -149,11 +158,12 @@ public sealed partial class OcrService : IDisposable
         return result.TextBlocks.Select(block =>
         {
             var points = block.BoxPoints;
+            var centerX = points.Average(point => point.X);
             var centerY = points.Average(point => point.Y);
             var score = block.CharScores is { Length: > 0 }
                 ? block.CharScores.Average(value => (double)value)
                 : 0;
-            return new RecognizedBlock(block.Text.Trim(), score, centerY);
+            return new RecognizedBlock(block.Text.Trim(), score, centerX, centerY);
         }).ToArray();
     }
 
@@ -214,7 +224,7 @@ public sealed partial class OcrService : IDisposable
         return SKBitmap.Decode(stream) ?? throw new InvalidOperationException("无法转换游戏截图。");
     }
 
-    private sealed record RecognizedBlock(string Text, double Score, double CenterY);
+    private sealed record RecognizedBlock(string Text, double Score, double CenterX, double CenterY);
 
     [GeneratedRegex(@"[\u4e00-\u9fff]")]
     private static partial Regex HasChinese();

@@ -37,5 +37,10 @@ public sealed class LayoutConfigServiceTests
         Assert.True(last.Right < 1);
         Assert.Equal(0.485, first.Top, 6);
         Assert.Equal(0.846, eighth.Bottom, 6);
+
+        var firstName = MarketOverviewLayout.NameSlot(0, 0.545);
+        Assert.True(firstName.Left < first.Left);
+        Assert.True(firstName.Top > 0.545);
+        Assert.True(firstName.Bottom > firstName.Top);
     }
 }

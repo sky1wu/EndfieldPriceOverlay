@@ -40,12 +40,14 @@ public partial class BatchConfirmationWindow : Window
     private void ShowRegion(string region)
     {
         selectedRegion = region;
-        var items = ItemRegionCatalog.ItemsForRegion(region);
+        var recognizedSlots = source.MatchItems(region);
+        var items = source.ItemNamesInGameOrder(region);
         fields = items.Select((name, index) => new BatchPriceField(
             index + 1,
             name,
-            source.Prices.ElementAtOrDefault(index),
-            source.PriceConfidences.ElementAtOrDefault(index))).ToArray();
+            recognizedSlots.GetValueOrDefault(name)?.Price,
+            recognizedSlots.GetValueOrDefault(name)?.NameConfidence,
+            recognizedSlots.GetValueOrDefault(name)?.PriceConfidence)).ToArray();
         PriceFields.ItemsSource = fields;
         var recognized = fields.Count(field => !string.IsNullOrEmpty(field.Price));
         HintText.Text = recognized == fields.Length
@@ -85,14 +87,19 @@ public partial class BatchConfirmationWindow : Window
     {
         private string price;
 
-        public BatchPriceField(int number, string name, int? initialPrice, double? confidence)
+        public BatchPriceField(
+            int number,
+            string name,
+            int? initialPrice,
+            double? nameConfidence,
+            double? priceConfidence)
         {
             Number = number.ToString("00", CultureInfo.InvariantCulture);
             Name = name;
             price = initialPrice?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
             ReviewText = initialPrice is null
                 ? "未识别"
-                : confidence is < 0.55
+                : nameConfidence is < 0.55 || priceConfidence is < 0.55
                     ? "请核对"
                     : "已识别";
         }

@@ -60,6 +60,32 @@ public static class MarketOverviewLayout
             centerX + halfWidth,
             rowBottom - priceBottomOffset);
     }
+
+    public static NormalizedRect NameSlot(int index, double rowBottom)
+    {
+        if (index is < 0 or >= SlotCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (rowBottom is <= 0.1 or >= 0.96)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rowBottom));
+        }
+
+        const double firstCenterX = 0.1105;
+        const double columnStep = 0.119;
+        const double halfWidth = 0.0555;
+        const double nameTopOffset = 0.004;
+        const double nameBottomOffset = 0.040;
+        var column = index % ColumnCount;
+        var centerX = firstCenterX + column * columnStep;
+        return new(
+            centerX - halfWidth,
+            rowBottom + nameTopOffset,
+            centerX + halfWidth,
+            rowBottom + nameBottomOffset);
+    }
 }
 
 public sealed class LayoutConfigService

@@ -54,6 +54,53 @@ public static class ItemRegionCatalog
         _ => throw new ArgumentOutOfRangeException(nameof(region), region, "未知地区。"),
     };
 
+    public static string? MatchItemName(string region, string? recognizedName)
+    {
+        var observed = NormalizeName(recognizedName);
+        if (observed.Length < 4)
+        {
+            return null;
+        }
+
+        var items = ItemsForRegion(region);
+        var exact = items.FirstOrDefault(item => NormalizeName(item) == observed);
+        if (exact is not null)
+        {
+            return exact;
+        }
+
+        var contained = items
+            .Where(item =>
+            {
+                var candidate = NormalizeName(item);
+                return candidate.Contains(observed, StringComparison.Ordinal)
+                    || observed.Contains(candidate, StringComparison.Ordinal);
+            })
+            .ToArray();
+        if (contained.Length == 1)
+        {
+            return contained[0];
+        }
+
+        var matches = items
+            .Select(item =>
+            {
+                var candidate = NormalizeName(item);
+                var distance = EditDistance(observed, candidate);
+                var similarity = 1d - distance / (double)Math.Max(observed.Length, candidate.Length);
+                return (Item: item, Distance: distance, Similarity: similarity);
+            })
+            .OrderBy(match => match.Distance)
+            .ThenByDescending(match => match.Similarity)
+            .ToArray();
+        var best = matches[0];
+        var hasClearLead = matches.Length == 1
+            || best.Similarity - matches[1].Similarity >= 0.12;
+        return best.Distance <= 3 && best.Similarity >= 0.62 && hasClearLead
+            ? best.Item
+            : null;
+    }
+
     public static int SortOrder(string region) => region switch
     {
         ValleyIv => 0,
@@ -82,5 +129,29 @@ public static class ItemRegionCatalog
         var index = ItemSortOrder(region, string.Concat(itemName.Where(character => !char.IsWhiteSpace(character))));
         var prefix = region == ValleyIv ? "valley" : "wuling";
         return $"Assets/Items/{prefix}-{index + 1:00}.png";
+    }
+
+    private static string NormalizeName(string? value) => string.Concat(
+        (value ?? string.Empty).Where(character => character is >= '\u4e00' and <= '\u9fff'));
+
+    private static int EditDistance(string left, string right)
+    {
+        var previous = Enumerable.Range(0, right.Length + 1).ToArray();
+        var current = new int[right.Length + 1];
+        for (var leftIndex = 1; leftIndex <= left.Length; leftIndex++)
+        {
+            current[0] = leftIndex;
+            for (var rightIndex = 1; rightIndex <= right.Length; rightIndex++)
+            {
+                var substitution = left[leftIndex - 1] == right[rightIndex - 1] ? 0 : 1;
+                current[rightIndex] = Math.Min(
+                    Math.Min(current[rightIndex - 1] + 1, previous[rightIndex] + 1),
+                    previous[rightIndex - 1] + substitution);
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return previous[right.Length];
     }
 }

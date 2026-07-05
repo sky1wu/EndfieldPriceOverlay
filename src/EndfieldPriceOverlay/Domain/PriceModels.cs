@@ -69,11 +69,60 @@ public sealed record DailyPriceReading(
 
 public sealed record PriceRecordChange(DateOnly Date, int? Price);
 
+public sealed record MarketOverviewSlot(
+    string? ItemName,
+    int? Price,
+    double? NameConfidence,
+    double? PriceConfidence);
+
 public sealed record MarketOverviewReading(
     string? Region,
-    int?[] Prices,
-    DateTime CapturedAt,
-    double?[] PriceConfidences);
+    IReadOnlyList<MarketOverviewSlot> Slots,
+    DateTime CapturedAt)
+{
+    public IReadOnlyDictionary<string, MarketOverviewSlot> MatchItems(string region) => Slots
+        .Select(slot => new
+        {
+            Name = ItemRegionCatalog.MatchItemName(region, slot.ItemName),
+            Slot = slot,
+        })
+        .Where(item => item.Name is not null)
+        .GroupBy(item => item.Name!, StringComparer.Ordinal)
+        .ToDictionary(
+            group => group.Key,
+            group => group
+                .OrderByDescending(item => item.Slot.Price is not null)
+                .ThenByDescending(item => Math.Min(
+                    item.Slot.NameConfidence ?? 0,
+                    item.Slot.PriceConfidence ?? 0))
+                .First().Slot,
+            StringComparer.Ordinal);
+
+    public IReadOnlyList<string> ItemNamesInGameOrder(string region)
+    {
+        var matched = MatchItems(region);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<string>(matched.Count);
+        foreach (var slot in Slots)
+        {
+            var name = ItemRegionCatalog.MatchItemName(region, slot.ItemName);
+            if (name is not null && matched.ContainsKey(name) && seen.Add(name))
+            {
+                result.Add(name);
+            }
+        }
+
+        foreach (var name in ItemRegionCatalog.ItemsForRegion(region))
+        {
+            if (seen.Add(name))
+            {
+                result.Add(name);
+            }
+        }
+
+        return result;
+    }
+}
 
 public sealed record OcrReading(
     string ItemName,
