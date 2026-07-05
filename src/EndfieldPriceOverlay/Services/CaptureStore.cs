@@ -116,6 +116,68 @@ public sealed class CaptureStore
         return readings.Count;
     }
 
+    public int ApplyPriceChanges(string itemName, IReadOnlyCollection<PriceRecordChange> changes)
+    {
+        var cleanedName = CleanName(itemName);
+        if (string.IsNullOrWhiteSpace(cleanedName))
+        {
+            throw new ArgumentException("物资名称不能为空。", nameof(itemName));
+        }
+
+        if (changes.Count == 0)
+        {
+            return 0;
+        }
+
+        if (changes.Select(change => change.Date).Distinct().Count() != changes.Count)
+        {
+            throw new ArgumentException("存在重复日期。", nameof(changes));
+        }
+
+        if (changes.Any(change => change.Price is not null and (< 300 or > 5500)))
+        {
+            throw new ArgumentException("价格必须是 300～5500 范围内的整数。", nameof(changes));
+        }
+
+        var updatedAt = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fffffff", CultureInfo.InvariantCulture);
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        foreach (var change in changes)
+        {
+            var priceDate = change.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = """
+                UPDATE price_adjustments
+                SET price=$price, updated_at=$updatedAt
+                WHERE item_name=$itemName AND price_date=$priceDate;
+                """;
+            update.Parameters.AddWithValue("$price", (object?)change.Price ?? DBNull.Value);
+            update.Parameters.AddWithValue("$updatedAt", updatedAt);
+            update.Parameters.AddWithValue("$itemName", cleanedName);
+            update.Parameters.AddWithValue("$priceDate", priceDate);
+            if (update.ExecuteNonQuery() != 0)
+            {
+                continue;
+            }
+
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = """
+                INSERT INTO price_adjustments(item_name, price_date, price, updated_at)
+                VALUES ($itemName, $priceDate, $price, $updatedAt);
+                """;
+            insert.Parameters.AddWithValue("$itemName", cleanedName);
+            insert.Parameters.AddWithValue("$priceDate", priceDate);
+            insert.Parameters.AddWithValue("$price", (object?)change.Price ?? DBNull.Value);
+            insert.Parameters.AddWithValue("$updatedAt", updatedAt);
+            insert.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        return changes.Count;
+    }
+
     public void Update(long captureId, CaptureReading reading)
     {
         Validate(reading);
@@ -201,25 +263,56 @@ public sealed class CaptureStore
             ORDER BY captured_at, id;
             """;
         dailyCommand.Parameters.AddWithValue("$itemName", CleanName(itemName));
-        using var dailyReader = dailyCommand.ExecuteReader();
-        while (dailyReader.Read())
+        using (var dailyReader = dailyCommand.ExecuteReader())
         {
-            var date = DateOnly.ParseExact(dailyReader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            var capturedAt = DateTime.Parse(dailyReader.GetString(1), CultureInfo.InvariantCulture);
-            SetLatest(values, date, dailyReader.GetInt32(2), capturedAt);
+            while (dailyReader.Read())
+            {
+                var date = DateOnly.ParseExact(dailyReader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                var capturedAt = DateTime.Parse(dailyReader.GetString(1), CultureInfo.InvariantCulture);
+                SetLatest(values, date, dailyReader.GetInt32(2), capturedAt);
+            }
         }
 
-        return new SortedDictionary<DateOnly, int>(values.ToDictionary(pair => pair.Key, pair => pair.Value.Price));
+        using var adjustmentCommand = connection.CreateCommand();
+        adjustmentCommand.CommandText = """
+            SELECT price_date, price, updated_at
+            FROM price_adjustments
+            WHERE item_name=$itemName
+            ORDER BY updated_at, id;
+            """;
+        adjustmentCommand.Parameters.AddWithValue("$itemName", CleanName(itemName));
+        using var adjustmentReader = adjustmentCommand.ExecuteReader();
+        while (adjustmentReader.Read())
+        {
+            var date = DateOnly.ParseExact(adjustmentReader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            int? price = adjustmentReader.IsDBNull(1) ? null : adjustmentReader.GetInt32(1);
+            var updatedAt = DateTime.Parse(adjustmentReader.GetString(2), CultureInfo.InvariantCulture);
+            SetLatest(values, date, price, updatedAt);
+        }
+
+        return new SortedDictionary<DateOnly, int>(values
+            .Where(pair => pair.Value.Price is not null)
+            .ToDictionary(pair => pair.Key, pair => pair.Value.Price!.Value));
     }
 
-    public IReadOnlyList<ItemSummary> GetItemSummaries(int trendDays = 30) =>
-        GetItemNames().Select(name =>
+    public IReadOnlyList<ItemSummary> GetItemSummaries(int trendDays = 30)
+    {
+        var summaries = new List<ItemSummary>();
+        foreach (var name in GetItemNames())
         {
             var dated = GetDatedPrices(name);
+            if (dated.Count == 0)
+            {
+                continue;
+            }
+
             var trend = dated.TakeLast(trendDays).ToArray();
             var latest = trend[^1];
-            return new ItemSummary(name, latest.Key, latest.Value, dated.Count, trend, GetItemRegion(name));
-        }).ToArray();
+            summaries.Add(new ItemSummary(name, latest.Key, latest.Value, dated.Count, trend, GetItemRegion(name)));
+        }
+
+        return summaries;
+    }
 
     public string? GetItemRegion(string itemName)
     {
@@ -253,7 +346,7 @@ public sealed class CaptureStore
     private static void SetLatest(
         IDictionary<DateOnly, TimedPrice> values,
         DateOnly date,
-        int price,
+        int? price,
         DateTime capturedAt)
     {
         if (!values.TryGetValue(date, out var existing) || capturedAt >= existing.CapturedAt)
@@ -348,6 +441,21 @@ public sealed class CaptureStore
                 ON daily_prices(item_name, price_date);
             """;
         command.ExecuteNonQuery();
+
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS price_adjustments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_name TEXT NOT NULL,
+                price_date TEXT NOT NULL,
+                price INTEGER NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(item_name, price_date)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_price_adjustments_item_date
+                ON price_adjustments(item_name, price_date);
+            """;
+        command.ExecuteNonQuery();
     }
 
     private static bool HasColumn(SqliteConnection connection, string tableName, string columnName)
@@ -387,5 +495,5 @@ public sealed class CaptureStore
         }
     }
 
-    private readonly record struct TimedPrice(int Price, DateTime CapturedAt);
+    private readonly record struct TimedPrice(int? Price, DateTime CapturedAt);
 }

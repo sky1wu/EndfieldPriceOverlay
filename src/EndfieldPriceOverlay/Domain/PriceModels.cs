@@ -67,6 +67,8 @@ public sealed record DailyPriceReading(
     DateTime CapturedAt,
     string Region);
 
+public sealed record PriceRecordChange(DateOnly Date, int? Price);
+
 public sealed record MarketOverviewReading(
     string? Region,
     int?[] Prices,

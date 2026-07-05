@@ -188,6 +188,7 @@ public partial class MainWindow : Window
         }
 
         SelectedNameText.Text = row.Name;
+        EditPricesButton.IsEnabled = true;
         SelectedMetaText.Text = $"最近记录 {row.Summary.LatestDate:yyyy-MM-dd} · {row.Summary.RecordedDays} 个有效日期";
         MainTrend.Values = row.Trend;
         var status = predictionStatus.Get(row.Name);
@@ -333,6 +334,7 @@ public partial class MainWindow : Window
 
     private void ShowEmptyState()
     {
+        EditPricesButton.IsEnabled = false;
         SelectedNameText.Text = "等待记录";
         SelectedMetaText.Text = "打开物资详情页或地区调度页，然后开始识别";
         MainTrend.Values = null;
@@ -352,7 +354,38 @@ public partial class MainWindow : Window
         _ => "星期日",
     };
 
-    private void Refresh_Click(object sender, RoutedEventArgs e) => RefreshItems((ItemsList.SelectedItem as ItemRow)?.Name);
+    private void EditPrices_Click(object sender, RoutedEventArgs e)
+    {
+        if (ItemsList.SelectedItem is not ItemRow row)
+        {
+            return;
+        }
+
+        try
+        {
+            var dialog = new PriceHistoryWindow(row.Name, store.GetDatedPrices(row.Name)) { Owner = this };
+            if (dialog.ShowDialog() != true || dialog.Changes is null)
+            {
+                StatusText.Text = "已取消价格记录修改";
+                return;
+            }
+
+            if (dialog.Changes.Count == 0)
+            {
+                StatusText.Text = "价格记录没有变化";
+                return;
+            }
+
+            var count = store.ApplyPriceChanges(row.Name, dialog.Changes);
+            RefreshItems(row.Name);
+            StatusText.Text = $"已更新 {row.Name} 的 {count} 条价格记录";
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = exception.Message;
+            MessageBox.Show(this, exception.Message, "无法修改价格记录", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 
     private void DebugMenu_Click(object sender, RoutedEventArgs e)
     {

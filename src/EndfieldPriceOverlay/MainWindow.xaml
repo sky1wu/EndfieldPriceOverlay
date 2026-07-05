@@ -309,15 +309,10 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <Grid Margin="20,18,20,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="已记录物资" Foreground="#EEF4F0" FontSize="18" FontWeight="SemiBold" />
                             <TextBlock x:Name="ItemCountText" Text="0 GOODS" Foreground="#708479" FontSize="10" />
                         </StackPanel>
-                        <Button Grid.Column="1" Content="刷新" Padding="12,6" VerticalAlignment="Center" Click="Refresh_Click" />
                     </Grid>
                     <Grid x:Name="ItemsListHost" Grid.Row="1" Margin="12,0,12,14"
                           SizeChanged="ItemsListHost_SizeChanged">
@@ -444,8 +439,13 @@
                             <TextBlock x:Name="SelectedMetaText" Text="打开游戏物资详情页，然后开始识别"
                                        Foreground="#778B80" FontSize="12" Margin="0,6,0,0" />
                         </StackPanel>
-                        <TextBlock Grid.Column="2" Text="RECENT 7 RECORDS" Foreground="#65786E"
-                                   FontSize="10" VerticalAlignment="Bottom" />
+                        <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+                            <TextBlock Text="RECENT 7 RECORDS" Foreground="#65786E"
+                                       FontSize="10" HorizontalAlignment="Right" />
+                            <Button x:Name="EditPricesButton" Content="管理价格记录" IsEnabled="False"
+                                    Margin="0,8,0,0" Padding="12,6" FontSize="11"
+                                    Click="EditPrices_Click" />
+                        </StackPanel>
                     </Grid>
 
                     <Border Grid.Row="1" Margin="0,20,0,12" Background="#0D1411" BorderBrush="#26322B" BorderThickness="1">

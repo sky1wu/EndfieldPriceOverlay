@@ -121,6 +121,47 @@ public sealed class CaptureStoreTests : IDisposable
     }
 
     [Fact]
+    public void ManualChangesCanEditAndDeleteIndividualDates()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "manual-changes.db"));
+        store.Save(new CaptureReading(
+            "锚点厨具货组",
+            [1000, 1100, 1200, 1300, 1400, 1500, 1600],
+            new DateTime(2026, 7, 4, 12, 0, 0)));
+
+        var count = store.ApplyPriceChanges("锚点厨具货组", [
+            new PriceRecordChange(new DateOnly(2026, 7, 4), 1700),
+            new PriceRecordChange(new DateOnly(2026, 7, 3), null),
+        ]);
+
+        var values = store.GetDatedPrices("锚点厨具货组");
+        Assert.Equal(2, count);
+        Assert.Equal(1700, values[new DateOnly(2026, 7, 4)]);
+        Assert.DoesNotContain(new DateOnly(2026, 7, 3), values.Keys);
+        Assert.Equal(6, values.Count);
+    }
+
+    [Fact]
+    public void DeletingAllDatesRemovesItemFromSummaries()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "delete-all-dates.db"));
+        store.SaveDailyPrices([
+            new DailyPriceReading(
+                "锚点厨具货组",
+                3004,
+                new DateTime(2026, 7, 4, 12, 0, 0),
+                ItemRegionCatalog.ValleyIv),
+        ]);
+
+        store.ApplyPriceChanges("锚点厨具货组", [
+            new PriceRecordChange(new DateOnly(2026, 7, 4), null),
+        ]);
+
+        Assert.Empty(store.GetDatedPrices("锚点厨具货组"));
+        Assert.Empty(store.GetItemSummaries());
+    }
+
+    [Fact]
     public void ExistingDatabaseIsMigratedBeforeRegionIsStored()
     {
         _ = new CaptureStore(Path.Combine(directory, "provider-bootstrap.db"));
