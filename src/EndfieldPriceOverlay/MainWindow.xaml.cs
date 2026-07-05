@@ -563,6 +563,9 @@ public partial class MainWindow : Window
         DebugMenuButton.ContextMenu.IsOpen = true;
     }
 
+    private void PredictionInfo_Click(object sender, RoutedEventArgs e) =>
+        new PredictionInfoWindow { Owner = this }.ShowDialog();
+
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)

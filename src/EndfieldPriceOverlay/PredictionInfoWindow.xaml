@@ -1,0 +1,149 @@
+<Window x:Class="EndfieldPriceOverlay.PredictionInfoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="预测原理" Width="720" Height="680" MinWidth="620" MinHeight="540"
+        WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
+        Background="#111916" Foreground="#EAF1EC">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Accent" Color="#A9E52E" />
+        <Style TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="SectionNumber" TargetType="Border">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="CornerRadius" Value="1" />
+            <Setter Property="Margin" Value="0,1,14,0" />
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#EEF4F0" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="BodyText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#9CAEA4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="20,9" />
+            <Setter Property="Foreground" Value="#0B100E" />
+            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="28,24,28,22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="0,0,0,18">
+            <TextBlock Text="预测算法如何工作" FontSize="23" FontWeight="SemiBold" />
+            <TextBlock Margin="0,7,0,0" Foreground="#82958B" FontSize="12" LineHeight="19"
+                       Text="本工具按已观察到的游戏价格规则做模板匹配，不读取游戏内存，也不是机器学习模型。" />
+        </StackPanel>
+
+        <ScrollViewer x:Name="ContentScroller" Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <Border Width="{Binding ViewportWidth, ElementName=ContentScroller}"
+                    Padding="0,0,12,0" HorizontalAlignment="Left">
+                <StackPanel>
+                    <Grid Margin="0,0,0,22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SectionNumber}">
+                            <TextBlock Text="1" Foreground="#0B100E" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="用 8 套周模板描述基础走势" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Style="{StaticResource BodyText}"
+                                       Text="每周价格假设属于逐升、逐降、先降后升、先升后降，以及 4 种奇偶震荡模板之一。每套模板都包含周一至周日的 7 个基础价格和一个波动系数。" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SectionNumber}">
+                            <TextBlock Text="2" Foreground="#0B100E" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="从实测价格反推物资偏移 ε" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Style="{StaticResource BodyText}"
+                                       Text="对每个可能的模板，按 ε = (实测价 ÷ 基础价 − 1) ÷ 波动系数，分别计算 7 天偏移。再将这组 ε 代入下一周的 8 套模板，生成候选价格走势。" />
+                            <Border Margin="0,10,0,0" Padding="12,9" Background="#0D1411"
+                                    BorderBrush="#29362F" BorderThickness="1,0,0,0">
+                                <TextBlock Foreground="#C7D4CD" FontFamily="Consolas" FontSize="12"
+                                           Text="预测价 = 四舍五入[基础价 × (1 + 波动系数 × ε)]" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SectionNumber}">
+                            <TextBlock Text="3" Foreground="#0B100E" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="跨周收敛，再用本周数据排除" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Style="{StaticResource BodyText}"
+                                       Text="候选走势会与下一周实测价格比较相对均方误差；保留接近最佳误差的候选，并在多次跨周比较中取交集。ε 锁定后，本周每天新增的实测价格会继续排除不符合的模板。" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SectionNumber}">
+                            <TextBlock Text="4" Foreground="#0B100E" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="如何解读结果" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Style="{StaticResource BodyText}"
+                                       Text="只剩 1 套走势时，界面显示未来每日预测价；仍有多套走势时，显示各候选的最低价至最高价范围。“还需 N 天”是根据当前候选数给出的估计，实际收敛可能更早或更晚。" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Padding="15,13" Background="#181D14" BorderBrush="#4B5727" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="使用边界" Foreground="#D8E9AE" FontWeight="SemiBold" />
+                            <TextBlock Margin="0,6,0,0" Foreground="#AEBB93" FontSize="11" LineHeight="18"
+                                       Text="预测依赖已确认的 OCR 记录和当前 8 套模板。识别错误、缺失日期、游戏规则调整或模板外走势都会降低准确度；请在写入前核对价格，并将结果作为参考。模板每周可能重新随机，因此本工具只预测当前周剩余日期。" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="所有计算与价格记录均保留在本机" Foreground="#65786E"
+                       FontSize="10" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="我知道了" IsDefault="True" Click="Close_Click" />
+        </Grid>
+    </Grid>
+</Window>
