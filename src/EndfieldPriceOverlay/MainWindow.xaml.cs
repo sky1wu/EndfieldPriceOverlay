@@ -22,6 +22,10 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, bool> regionExpansion = new(StringComparer.Ordinal);
     private readonly OcrService ocr;
     private readonly PredictionStatusService predictionStatus;
+    private Point dragStartPoint;
+    private ItemRow? draggedItem;
+    private ListBoxItem? dropTargetContainer;
+    private bool dropAfterTarget;
     private string? stickyRegion;
 
     public MainWindow()
@@ -38,6 +42,7 @@ public partial class MainWindow : Window
 
     private void RefreshItems(string? selectName = null)
     {
+        var customOrders = store.GetItemSortOrders();
         var rows = store.GetItemSummaries()
             .Where(item => ItemRegionCatalog.IsKnownRegion(item.Region))
             .Select(item => new ItemRow(
@@ -49,6 +54,7 @@ public partial class MainWindow : Window
                 item.Trend.TakeLast(7).Select(pair => new TrendDatum(pair.Key, pair.Value)).ToArray(),
                 item))
             .OrderBy(row => ItemRegionCatalog.SortOrder(row.Region))
+            .ThenBy(row => customOrders.TryGetValue(row.Name, out var order) ? order : int.MaxValue)
             .ThenByDescending(row => row.Summary.LatestDate)
             .ThenBy(row => ItemRegionCatalog.ItemSortOrder(row.Region, row.Name))
             .ToArray();
@@ -217,6 +223,150 @@ public partial class MainWindow : Window
         MainTrend.BeginAnimation(OpacityProperty, reveal);
     }
 
+    private void ItemsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        dragStartPoint = e.GetPosition(ItemsList);
+        draggedItem = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext as ItemRow;
+    }
+
+    private void ItemsList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || draggedItem is null)
+        {
+            return;
+        }
+
+        var position = e.GetPosition(ItemsList);
+        if (Math.Abs(position.X - dragStartPoint.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(position.Y - dragStartPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        var item = draggedItem;
+        try
+        {
+            DragDrop.DoDragDrop(ItemsList, new DataObject(typeof(ItemRow), item), DragDropEffects.Move);
+        }
+        finally
+        {
+            draggedItem = null;
+            ClearDropMarker();
+        }
+    }
+
+    private void ItemsList_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(typeof(ItemRow)) is not ItemRow source)
+        {
+            RejectDrop(e);
+            return;
+        }
+
+        var targetContainer = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
+        if (targetContainer?.DataContext is not ItemRow target
+            || target.Region != source.Region
+            || target.Name == source.Name)
+        {
+            RejectDrop(e);
+            return;
+        }
+
+        var pointer = e.GetPosition(targetContainer);
+        SetDropMarker(targetContainer, pointer.Y >= targetContainer.ActualHeight / 2);
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+
+        var listPointer = e.GetPosition(ItemsList);
+        var scrollViewer = VisualDescendants<ScrollViewer>(ItemsList).FirstOrDefault();
+        if (listPointer.Y < 24)
+        {
+            scrollViewer?.LineUp();
+        }
+        else if (listPointer.Y > ItemsList.ActualHeight - 24)
+        {
+            scrollViewer?.LineDown();
+        }
+    }
+
+    private void ItemsList_Drop(object sender, DragEventArgs e)
+    {
+        try
+        {
+            if (e.Data.GetData(typeof(ItemRow)) is not ItemRow source
+                || dropTargetContainer?.DataContext is not ItemRow target
+                || source.Region != target.Region)
+            {
+                return;
+            }
+
+            var ordered = ItemsList.Items.Cast<ItemRow>()
+                .Where(row => row.Region == source.Region && row.Name != source.Name)
+                .ToList();
+            var targetIndex = ordered.FindIndex(row => row.Name == target.Name);
+            if (targetIndex < 0)
+            {
+                return;
+            }
+
+            ordered.Insert(targetIndex + (dropAfterTarget ? 1 : 0), source);
+            store.SaveItemOrder(ordered.Select(row => row.Name).ToArray());
+            RefreshItems(source.Name);
+            StatusText.Text = $"已调整 {source.Region}物资顺序";
+            e.Handled = true;
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = exception.Message;
+            MessageBox.Show(this, exception.Message, "无法调整物资顺序", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            ClearDropMarker();
+        }
+    }
+
+    private void RejectDrop(DragEventArgs e)
+    {
+        ClearDropMarker();
+        e.Effects = DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void SetDropMarker(ListBoxItem container, bool after)
+    {
+        if (dropTargetContainer != container || dropAfterTarget != after)
+        {
+            ClearDropMarker();
+        }
+
+        dropTargetContainer = container;
+        dropAfterTarget = after;
+        var markerName = after ? "DropMarkerBottom" : "DropMarkerTop";
+        if (container.Template.FindName(markerName, container) is Border marker)
+        {
+            marker.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void ClearDropMarker()
+    {
+        if (dropTargetContainer is not null)
+        {
+            if (dropTargetContainer.Template.FindName("DropMarkerTop", dropTargetContainer) is Border top)
+            {
+                top.Visibility = Visibility.Collapsed;
+            }
+
+            if (dropTargetContainer.Template.FindName("DropMarkerBottom", dropTargetContainer) is Border bottom)
+            {
+                bottom.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        dropTargetContainer = null;
+    }
+
     private void RegionExpander_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not Expander { Tag: string region } expander)
@@ -330,6 +480,21 @@ public partial class MainWindow : Window
                 yield return descendant;
             }
         }
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child is not null)
+        {
+            if (child is T match)
+            {
+                return match;
+            }
+
+            child = VisualTreeHelper.GetParent(child);
+        }
+
+        return null;
     }
 
     private void ShowEmptyState()

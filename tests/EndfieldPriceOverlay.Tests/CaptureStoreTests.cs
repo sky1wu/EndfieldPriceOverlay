@@ -191,6 +191,21 @@ public sealed class CaptureStoreTests : IDisposable
         Assert.Equal(ItemRegionCatalog.ValleyIv, store.GetItemSummaries().Single().Region);
     }
 
+    [Fact]
+    public void CustomItemOrderIsPersisted()
+    {
+        var databasePath = Path.Combine(directory, "item-order.db");
+        var store = new CaptureStore(databasePath);
+
+        store.SaveItemOrder(["天师龙泡泡货组", "锚点厨具货组"]);
+        store.SaveItemOrder(["锚点厨具货组", "天师龙泡泡货组"]);
+
+        var reopenedStore = new CaptureStore(databasePath);
+        var orders = reopenedStore.GetItemSortOrders();
+        Assert.Equal(0, orders["锚点厨具货组"]);
+        Assert.Equal(1, orders["天师龙泡泡货组"]);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(directory))

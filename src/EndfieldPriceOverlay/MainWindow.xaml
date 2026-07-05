@@ -322,7 +322,12 @@
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                                  ScrollViewer.ScrollChanged="ItemsList_ScrollChanged"
-                                 SelectionChanged="ItemsList_SelectionChanged">
+                                 SelectionChanged="ItemsList_SelectionChanged"
+                                 AllowDrop="True"
+                                 PreviewMouseLeftButtonDown="ItemsList_PreviewMouseLeftButtonDown"
+                                 PreviewMouseMove="ItemsList_PreviewMouseMove"
+                                 DragOver="ItemsList_DragOver"
+                                 Drop="ItemsList_Drop">
                             <ListBox.Resources>
                                 <Style TargetType="ScrollBar" BasedOn="{StaticResource ItemListScrollBar}" />
                             </ListBox.Resources>
@@ -354,6 +359,8 @@
                                     <Setter Property="Padding" Value="0" />
                                     <Setter Property="Margin" Value="0,0,0,5" />
                                     <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Cursor" Value="Hand" />
+                                    <Setter Property="ToolTip" Value="拖动调整顺序" />
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ListBoxItem">
@@ -362,6 +369,10 @@
                                                             HorizontalAlignment="Left" Background="{StaticResource Accent}"
                                                             Visibility="Collapsed" />
                                                     <ContentPresenter Margin="12" />
+                                                    <Border x:Name="DropMarkerTop" Height="2" VerticalAlignment="Top"
+                                                            Background="{StaticResource Accent}" Visibility="Collapsed" />
+                                                    <Border x:Name="DropMarkerBottom" Height="2" VerticalAlignment="Bottom"
+                                                            Background="{StaticResource Accent}" Visibility="Collapsed" />
                                                 </Grid>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsSelected" Value="True">

@@ -314,6 +314,59 @@ public sealed class CaptureStore
         return summaries;
     }
 
+    public IReadOnlyDictionary<string, int> GetItemSortOrders()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT item_name, sort_order FROM item_sort_orders;";
+        using var reader = command.ExecuteReader();
+        var orders = new Dictionary<string, int>(StringComparer.Ordinal);
+        while (reader.Read())
+        {
+            orders[reader.GetString(0)] = reader.GetInt32(1);
+        }
+
+        return orders;
+    }
+
+    public void SaveItemOrder(IReadOnlyList<string> itemNames)
+    {
+        var names = itemNames.Select(CleanName).ToArray();
+        if (names.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException("物资名称不能为空。", nameof(itemNames));
+        }
+
+        if (names.Distinct(StringComparer.Ordinal).Count() != names.Length)
+        {
+            throw new ArgumentException("排序中存在重复物资。", nameof(itemNames));
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        for (var index = 0; index < names.Length; index++)
+        {
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE item_sort_orders SET sort_order=$sortOrder WHERE item_name=$itemName;";
+            update.Parameters.AddWithValue("$sortOrder", index);
+            update.Parameters.AddWithValue("$itemName", names[index]);
+            if (update.ExecuteNonQuery() != 0)
+            {
+                continue;
+            }
+
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = "INSERT INTO item_sort_orders(item_name, sort_order) VALUES ($itemName, $sortOrder);";
+            insert.Parameters.AddWithValue("$itemName", names[index]);
+            insert.Parameters.AddWithValue("$sortOrder", index);
+            insert.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
     public string? GetItemRegion(string itemName)
     {
         var knownRegion = ItemRegionCatalog.TryClassify(itemName);
@@ -454,6 +507,11 @@ public sealed class CaptureStore
 
             CREATE INDEX IF NOT EXISTS idx_price_adjustments_item_date
                 ON price_adjustments(item_name, price_date);
+
+            CREATE TABLE IF NOT EXISTS item_sort_orders (
+                item_name TEXT PRIMARY KEY,
+                sort_order INTEGER NOT NULL
+            );
             """;
         command.ExecuteNonQuery();
     }
