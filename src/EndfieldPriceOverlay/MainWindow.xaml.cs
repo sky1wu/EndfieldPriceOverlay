@@ -205,22 +205,52 @@ public partial class MainWindow : Window
         RequiredDaysText.Text = status.RequiredFutureDays == 0
             ? "今天可补齐"
             : $"还需 {status.RequiredFutureDays} 天";
-        ForecastList.ItemsSource = status.Future.Count > 0
-            ? status.Future.Select(value => new ForecastRow(
-                value.Date.ToString("MM/dd"),
-                WeekdayName(value.Weekday),
-                value.Price.ToString())).ToArray()
-            : status.Ranges.Select(value => new ForecastRow(
-                value.Date.ToString("MM/dd"),
-                WeekdayName(value.Weekday),
-                value.Minimum == value.Maximum ? value.Minimum.ToString() : $"{value.Minimum} ～ {value.Maximum}"))
-                .ToArray();
+        var weekPrices = BuildWeekPrices(row.Name, status);
+        var hasWeekPrices = weekPrices.Any(value => value.Low is not null);
+        ForecastChart.Values = weekPrices;
+        ForecastChart.Visibility = hasWeekPrices ? Visibility.Visible : Visibility.Collapsed;
+        ForecastEmptyText.Visibility = hasWeekPrices ? Visibility.Collapsed : Visibility.Visible;
 
         var reveal = new DoubleAnimation(0.35, 1, TimeSpan.FromMilliseconds(180))
         {
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         MainTrend.BeginAnimation(OpacityProperty, reveal);
+    }
+
+    private WeekPriceDatum[] BuildWeekPrices(string itemName, PredictionStatus status)
+    {
+        var today = GameCalendar.DateAt(DateTime.Now);
+        var monday = today.AddDays(-((int)today.DayOfWeek + 6) % 7);
+        var actual = store.GetDatedPrices(itemName)
+            .Where(pair => pair.Key >= monday && pair.Key <= monday.AddDays(6))
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+        var future = status.Future.ToDictionary(value => value.Date);
+        var ranges = status.Ranges.ToDictionary(value => value.Date);
+        var result = new List<WeekPriceDatum>(7);
+
+        for (var index = 0; index < 7; index++)
+        {
+            var date = monday.AddDays(index);
+            if (actual.TryGetValue(date, out var price))
+            {
+                result.Add(new WeekPriceDatum(date, price));
+            }
+            else if (future.TryGetValue(date, out var prediction))
+            {
+                result.Add(new WeekPriceDatum(date, prediction.Price));
+            }
+            else if (ranges.TryGetValue(date, out var range))
+            {
+                result.Add(new WeekPriceDatum(date, null, range.Minimum, range.Maximum));
+            }
+            else
+            {
+                result.Add(new WeekPriceDatum(date, null));
+            }
+        }
+
+        return result.ToArray();
     }
 
     private void ItemsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -505,19 +535,10 @@ public partial class MainWindow : Window
         MainTrend.Values = null;
         PredictionMessageText.Text = "记录完整数据后显示预测结果";
         RequiredDaysBadge.Visibility = Visibility.Collapsed;
-        ForecastList.ItemsSource = null;
+        ForecastChart.Values = null;
+        ForecastChart.Visibility = Visibility.Collapsed;
+        ForecastEmptyText.Visibility = Visibility.Visible;
     }
-
-    private static string WeekdayName(int index) => index switch
-    {
-        0 => "星期一",
-        1 => "星期二",
-        2 => "星期三",
-        3 => "星期四",
-        4 => "星期五",
-        5 => "星期六",
-        _ => "星期日",
-    };
 
     private void EditPrices_Click(object sender, RoutedEventArgs e)
     {
@@ -651,5 +672,4 @@ public partial class MainWindow : Window
         TrendDatum[] Trend,
         ItemSummary Summary);
 
-    private sealed record ForecastRow(string DateText, string DayText, string ValueText);
 }

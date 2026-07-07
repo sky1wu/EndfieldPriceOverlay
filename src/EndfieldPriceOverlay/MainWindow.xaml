@@ -388,7 +388,8 @@
                 <Grid Grid.Column="2" Margin="28,24">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="205" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -423,67 +424,52 @@
                         <local:TrendControl x:Name="MainTrend" Margin="14,10,14,8" StrokeThickness="2.2" ShowLabels="True" />
                     </Border>
 
-                    <Grid Grid.Row="2" Margin="0,8,0,16">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="未来价格" Foreground="#DDE7E1" FontSize="14"
-                                               FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <Button Style="{StaticResource InfoButton}" Click="PredictionInfo_Click"
-                                            ToolTip="查看预测算法与使用边界">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border Width="15" Height="15" Margin="0,0,5,0" CornerRadius="8"
-                                                    BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                    BorderThickness="1">
-                                                <TextBlock Text="i" FontSize="10" FontWeight="Bold"
-                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
-                                            <TextBlock Text="原理说明" FontSize="10"
-                                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
-                                <TextBlock x:Name="PredictionMessageText" Text="记录完整数据后显示预测结果"
-                                           Foreground="#D8A934" FontSize="12" Margin="0,6,14,0" TextWrapping="Wrap" />
+                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="本周价格" Foreground="#DDE7E1" FontSize="14"
+                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Button Style="{StaticResource InfoButton}" Click="PredictionInfo_Click"
+                                        ToolTip="查看预测算法与使用边界">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="15" Height="15" Margin="0,0,5,0" CornerRadius="8"
+                                                BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                BorderThickness="1">
+                                            <TextBlock Text="i" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="原理说明" FontSize="10"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
-                            <Border x:Name="RequiredDaysBadge" Grid.Column="1" Visibility="Collapsed"
-                                    Background="#1A251F" BorderBrush="#39483F" BorderThickness="1"
-                                    Padding="12,7" VerticalAlignment="Top">
-                                <TextBlock x:Name="RequiredDaysText" Text="还需 1 天" Foreground="{StaticResource Accent}"
-                                           FontSize="14" FontWeight="SemiBold" />
-                            </Border>
-                        </Grid>
-                        <ItemsControl x:Name="ForecastList" Grid.Row="1" Margin="0,12,0,0">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="#27342C" BorderThickness="0,0,0,1" Padding="4,10">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="95" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding DateText}" Foreground="#819489" />
-                                            <TextBlock Grid.Column="1" Text="{Binding DayText}" Foreground="#A9B7AF" />
-                                            <TextBlock Grid.Column="2" Text="{Binding ValueText}" Foreground="{StaticResource Accent}"
-                                                       FontSize="18" FontWeight="SemiBold" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            <TextBlock x:Name="PredictionMessageText" Text="记录完整数据后显示预测结果"
+                                       Foreground="#D8A934" FontSize="12" Margin="0,6,14,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Border x:Name="RequiredDaysBadge" Grid.Column="1" Visibility="Collapsed"
+                                Background="#1A251F" BorderBrush="#39483F" BorderThickness="1"
+                                Padding="12,7" VerticalAlignment="Top">
+                            <TextBlock x:Name="RequiredDaysText" Text="还需 1 天" Foreground="{StaticResource Accent}"
+                                       FontSize="14" FontWeight="SemiBold" />
+                        </Border>
                     </Grid>
 
-                    <Grid Grid.Row="3">
+                    <Border Grid.Row="3" Margin="0,12,0,20" Background="#0D1411"
+                            BorderBrush="#26322B" BorderThickness="1">
+                        <Grid>
+                            <local:WeekPriceChartControl x:Name="ForecastChart" Margin="14,10,14,8" />
+                            <TextBlock x:Name="ForecastEmptyText" Text="暂无本周价格数据"
+                                       Foreground="#65786E" FontSize="12"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
