@@ -5,6 +5,8 @@ public static class ItemRegionCatalog
     public const string ValleyIv = "四号谷地";
     public const string Wuling = "武陵";
 
+    public static IReadOnlyList<string> KnownRegions { get; } = [ValleyIv, Wuling];
+
     private static readonly IReadOnlyList<string> ValleyIvItems =
     [
         "锚点厨具货组",

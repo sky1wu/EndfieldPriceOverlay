@@ -587,6 +587,19 @@ public partial class MainWindow : Window
     private void PredictionInfo_Click(object sender, RoutedEventArgs e) =>
         new PredictionInfoWindow { Owner = this }.ShowDialog();
 
+    private void PurchasePlanner_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            new PurchasePlannerWindow(store, predictionStatus) { Owner = this }.ShowDialog();
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = exception.Message;
+            MessageBox.Show(this, exception.Message, "无法打开购买建议", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)
