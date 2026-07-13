@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using EndfieldPriceOverlay.Domain;
 using EndfieldPriceOverlay.Services;
 
@@ -24,6 +26,11 @@ public partial class PurchasePlannerWindow : Window
         RegionFields.ItemsSource = fields;
         AdviceGroups.ItemsSource = Array.Empty<RegionAdviceView>();
         SummaryText.Text = "填写各地区数量后生成建议";
+        Loaded += (_, _) =>
+        {
+            AnimateSection(SettingsSection, 0);
+            AnimateSection(ResultsSection, 70);
+        };
     }
 
     private void Generate_Click(object sender, RoutedEventArgs e)
@@ -40,6 +47,13 @@ public partial class PurchasePlannerWindow : Window
                 .Select(item => new RegionAdviceView(item))
                 .ToArray();
             AdviceGroups.ItemsSource = result;
+            AdviceEmptyState.Visibility = result.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            AdviceResultsScroller.Visibility = result.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            if (result.Length > 0)
+            {
+                AnimateResults();
+            }
+
             var total = result.Sum(item => item.TotalQuantity);
             SummaryText.Text = $"已生成 {result.Count(item => item.IsReady)} 个地区建议 · 合计 {total} 件";
         }
@@ -130,6 +144,40 @@ public partial class PurchasePlannerWindow : Window
         && number >= 0;
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private static void AnimateSection(FrameworkElement element, int delayMilliseconds)
+    {
+        var transform = new TranslateTransform(0, 8);
+        element.RenderTransform = transform;
+        element.Opacity = 0;
+        var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        var delay = TimeSpan.FromMilliseconds(delayMilliseconds);
+        element.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
+        {
+            BeginTime = delay,
+            EasingFunction = easing,
+        });
+        transform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(220))
+        {
+            BeginTime = delay,
+            EasingFunction = easing,
+        });
+    }
+
+    private void AnimateResults()
+    {
+        var transform = AdviceResultsScroller.RenderTransform as TranslateTransform ?? new TranslateTransform();
+        AdviceResultsScroller.RenderTransform = transform;
+        var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        AdviceResultsScroller.BeginAnimation(OpacityProperty, new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(190))
+        {
+            EasingFunction = easing,
+        });
+        transform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(190))
+        {
+            EasingFunction = easing,
+        });
+    }
 
     private sealed class PurchaseRegionField(RegionPurchaseSettings setting) : INotifyPropertyChanged
     {

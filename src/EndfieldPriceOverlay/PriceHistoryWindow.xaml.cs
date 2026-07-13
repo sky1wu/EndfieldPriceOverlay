@@ -158,6 +158,17 @@ public partial class PriceHistoryWindow : Window
             })
             .ToArray();
         fields.AddRange(days);
+        foreach (var field in days)
+        {
+            field.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(PriceRecordField.Price))
+                {
+                    UpdateSummary();
+                }
+            };
+        }
+
         return new PriceRecordWeek(monday, days);
     }
 

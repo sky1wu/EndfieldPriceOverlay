@@ -54,7 +54,11 @@
                                       Stroke="#71847A" StrokeThickness="1.6" Stretch="None"
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                       StrokeLineJoin="Round" RenderTransformOrigin="0.5,0.5"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path.RenderTransform>
+                                        <RotateTransform x:Name="ChevronRotation" />
+                                    </Path.RenderTransform>
+                                </Path>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -66,11 +70,28 @@
                                 <Setter TargetName="HeaderSurface" Property="Background" Value="#17211C" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Chevron" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <RotateTransform Angle="90" />
-                                    </Setter.Value>
-                                </Setter>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ChevronRotation"
+                                                             Storyboard.TargetProperty="Angle"
+                                                             To="90" Duration="0:0:0.16">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <QuadraticEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ChevronRotation"
+                                                             Storyboard.TargetProperty="Angle"
+                                                             To="0" Duration="0:0:0.13" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -98,38 +119,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style TargetType="Button">
-            <Setter Property="Foreground" Value="#EAF1EC" />
-            <Setter Property="Background" Value="#1B2721" />
-            <Setter Property="BorderBrush" Value="#34433B" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="16,9" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#26362D" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Foreground" Value="#0B100E" />
-            <Setter Property="Background" Value="{StaticResource Accent}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-        </Style>
-        <Style x:Key="InfoButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Style x:Key="InfoButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="Foreground" Value="#7F9388" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -156,6 +146,22 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+        <Style x:Key="TitleBarButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="#C7D5CD" />
+        </Style>
+        <Style x:Key="CloseTitleBarButton" TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#FFE6E2" />
+                    <Setter Property="Background" Value="#7A2F2A" />
+                    <Setter Property="BorderBrush" Value="#9A433D" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style TargetType="ContextMenu">
             <Setter Property="MinWidth" Value="220" />
@@ -240,10 +246,10 @@
                         <TextBlock Text="ELASTIC GOODS INTELLIGENCE" Foreground="#6E8377" FontSize="9" />
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button x:Name="DebugMenuButton" Width="48" Height="58" Padding="0" BorderThickness="0"
-                            Background="Transparent" Content="•••" FontSize="12" ToolTip="调试工具"
-                            Click="DebugMenu_Click">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,6,0"
+                            VerticalAlignment="Center">
+                    <Button x:Name="DebugMenuButton" Style="{StaticResource TitleBarButton}"
+                            ToolTip="调试工具" Click="DebugMenu_Click">
                         <Button.ContextMenu>
                             <ContextMenu Placement="Bottom">
                                 <MenuItem Header="调试功能" IsEnabled="False" />
@@ -251,11 +257,24 @@
                                 <MenuItem Header="校准 OCR 识别区域…" Click="Calibrate_Click" />
                             </ContextMenu>
                         </Button.ContextMenu>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="3" Height="3" Margin="0,0,3,0"
+                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            <Ellipse Width="3" Height="3" Margin="0,0,3,0"
+                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            <Ellipse Width="3" Height="3"
+                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                        </StackPanel>
                     </Button>
-                    <Button Width="48" Height="58" Padding="0" BorderThickness="0" Background="Transparent"
-                            Content="—" Click="Minimize_Click" />
-                    <Button Width="48" Height="58" Padding="0" BorderThickness="0" Background="Transparent"
-                            Content="×" FontSize="20" Click="Close_Click" />
+                    <Button Style="{StaticResource TitleBarButton}" ToolTip="最小化" Click="Minimize_Click">
+                        <Border Width="12" Height="1.5"
+                                Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                    </Button>
+                    <Button Style="{StaticResource CloseTitleBarButton}" ToolTip="关闭" Click="Close_Click">
+                        <Path Width="12" Height="12" Data="M 1,1 L 11,11 M 11,1 L 1,11"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    </Button>
                 </StackPanel>
             </Grid>
 
@@ -266,7 +285,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Grid Background="#101713">
+                <Grid x:Name="ItemsPanel" Background="#101713">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -326,9 +345,13 @@
                                             <ControlTemplate TargetType="ListBoxItem">
                                                 <Grid x:Name="Root" Background="{TemplateBinding Background}">
                                                     <Border x:Name="SelectionBar" Width="3" Margin="0,8,0,8"
-                                                            HorizontalAlignment="Left" Background="{StaticResource Accent}"
-                                                            Visibility="Collapsed" />
-                                                    <ContentPresenter Margin="12" />
+                                                             HorizontalAlignment="Left" Background="{StaticResource Accent}"
+                                                             Opacity="0" />
+                                                    <ContentPresenter x:Name="ItemContent" Margin="12">
+                                                        <ContentPresenter.RenderTransform>
+                                                            <TranslateTransform x:Name="ItemOffset" />
+                                                        </ContentPresenter.RenderTransform>
+                                                    </ContentPresenter>
                                                     <Border x:Name="DropMarkerTop" Height="2" VerticalAlignment="Top"
                                                             Background="{StaticResource Accent}" Visibility="Collapsed" />
                                                     <Border x:Name="DropMarkerBottom" Height="2" VerticalAlignment="Bottom"
@@ -337,10 +360,49 @@
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsSelected" Value="True">
                                                         <Setter TargetName="Root" Property="Background" Value="#1A251F" />
-                                                        <Setter TargetName="SelectionBar" Property="Visibility" Value="Visible" />
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="SelectionBar"
+                                                                                     Storyboard.TargetProperty="Opacity"
+                                                                                     To="1" Duration="0:0:0.14" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="SelectionBar"
+                                                                                     Storyboard.TargetProperty="Opacity"
+                                                                                     To="0" Duration="0:0:0.1" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.ExitActions>
                                                     </Trigger>
                                                     <Trigger Property="IsMouseOver" Value="True">
                                                         <Setter TargetName="Root" Property="Background" Value="#17201B" />
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="ItemOffset"
+                                                                                     Storyboard.TargetProperty="X"
+                                                                                     To="3" Duration="0:0:0.13">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <QuadraticEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="ItemOffset"
+                                                                                     Storyboard.TargetProperty="X"
+                                                                                     To="0" Duration="0:0:0.1" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.ExitActions>
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -394,7 +456,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Grid>
+                    <Grid x:Name="SelectedHeader">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -414,13 +476,15 @@
                         <StackPanel Grid.Column="2" HorizontalAlignment="Right">
                             <TextBlock Text="RECENT 7 RECORDS" Foreground="#65786E"
                                        FontSize="10" HorizontalAlignment="Right" />
-                            <Button x:Name="EditPricesButton" Content="管理价格记录" IsEnabled="False"
+                            <Button x:Name="EditPricesButton" Style="{StaticResource AppQuietButton}"
+                                    Content="管理价格记录" IsEnabled="False"
                                     Margin="0,8,0,0" Padding="12,6" FontSize="11"
                                     Click="EditPrices_Click" />
                         </StackPanel>
                     </Grid>
 
-                    <Border Grid.Row="1" Margin="0,20,0,12" Background="#0D1411" BorderBrush="#26322B" BorderThickness="1">
+                    <Border Grid.Row="1" Margin="0,20,0,12" Background="#0D1411"
+                            BorderBrush="#26322B" BorderThickness="1" CornerRadius="3">
                         <local:TrendControl x:Name="MainTrend" Margin="14,10,14,8" StrokeThickness="2.2" ShowLabels="True" />
                     </Border>
 
@@ -452,13 +516,14 @@
                                        Foreground="#D8A934" FontSize="12" Margin="0,6,14,0" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Top">
-                            <Border x:Name="RequiredDaysBadge" Visibility="Collapsed"
-                                    Background="#1A251F" BorderBrush="#39483F" BorderThickness="1"
+                            <Border x:Name="RequiredDaysBadge" Visibility="Collapsed" CornerRadius="3"
+                                     Background="#1A251F" BorderBrush="#39483F" BorderThickness="1"
                                     Padding="12,7" HorizontalAlignment="Right">
                                 <TextBlock x:Name="RequiredDaysText" Text="还需 1 天" Foreground="{StaticResource Accent}"
                                            FontSize="14" FontWeight="SemiBold" />
                             </Border>
-                            <Button x:Name="CandidateTrendsButton" Visibility="Collapsed"
+                            <Button x:Name="CandidateTrendsButton" Style="{StaticResource AppGhostButton}"
+                                    Visibility="Collapsed"
                                     Margin="0,6,0,0" Padding="12,6" HorizontalAlignment="Right"
                                     Foreground="{StaticResource Accent}" FontSize="11"
                                     Content="展开全部走势" Click="CandidateTrends_Click" />
@@ -466,7 +531,7 @@
                     </Grid>
 
                     <Border Grid.Row="3" Margin="0,12,0,20" Background="#0D1411"
-                            BorderBrush="#26322B" BorderThickness="1">
+                            BorderBrush="#26322B" BorderThickness="1" CornerRadius="3">
                         <Grid>
                             <local:WeekPriceChartControl x:Name="ForecastChart" Margin="14,10,14,8" />
                             <TextBlock x:Name="ForecastEmptyText" Text="暂无本周价格数据"
@@ -496,7 +561,8 @@
                                                Foreground="#71847A" FontSize="10"
                                                Text="相同价格序列已合并" />
                                 </StackPanel>
-                                <Button Grid.Column="1" Content="收起" Padding="12,6"
+                                <Button Grid.Column="1" Style="{StaticResource AppGhostButton}"
+                                        Content="收起" Padding="12,6"
                                         VerticalAlignment="Top" Click="CloseCandidateTrends_Click" />
                             </Grid>
 
@@ -573,10 +639,11 @@
                                        TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                            <Button Width="116" Height="46" Padding="12,0" Margin="0,0,10,0"
+                            <Button Style="{StaticResource AppQuietButton}"
+                                Width="116" Height="46" Padding="12,0" Margin="0,0,10,0"
                                 FontSize="13" FontWeight="SemiBold"
                                 Content="购买建议" Click="PurchasePlanner_Click" />
-                            <Button x:Name="BatchRecognizeButton" Style="{StaticResource AccentButton}"
+                            <Button x:Name="BatchRecognizeButton" Style="{StaticResource AppAccentButton}"
                                 Width="176" Height="46" Padding="14,0" Margin="0,0,10,0"
                                 FontSize="13" FontWeight="SemiBold"
                                 Content="批量识别今日价格" Click="BatchRecognize_Click" />
@@ -589,13 +656,14 @@
                 </Grid>
             </Grid>
 
-            <Grid Grid.Row="2" Background="#0A0F0D">
+            <Grid x:Name="StatusBar" Grid.Row="2" Background="#0A0F0D">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Ellipse Width="7" Height="7" Margin="18,0,8,0" Fill="{StaticResource Accent}" />
+                <Ellipse x:Name="StatusDot" Width="7" Height="7" Margin="18,0,8,0"
+                         Fill="{StaticResource Accent}" />
                 <TextBlock x:Name="StatusText" Grid.Column="1" Text="就绪 · 等待识别 Endfield 窗口"
                            Foreground="#72857A" FontSize="10" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="2" Text="LOCAL DATA · OCR OFFLINE" Foreground="#526158"

@@ -1,144 +1,287 @@
 <Window x:Class="EndfieldPriceOverlay.PurchasePlannerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="购买建议" Width="760" Height="680" MinHeight="540"
+        Title="购买建议" Width="820" Height="700" MinWidth="740" MinHeight="560"
         WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner"
         Background="#111916" Foreground="#EAF1EC">
     <Window.Resources>
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#1B2721" />
-            <Setter Property="Foreground" Value="#EFF5F1" />
-            <Setter Property="BorderBrush" Value="#34433B" />
-            <Setter Property="Padding" Value="8,6" />
+        <Style x:Key="PlannerEditor" TargetType="TextBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#F1F6F3" />
+            <Setter Property="BorderBrush" Value="#30433A" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="8,7" />
             <Setter Property="CaretBrush" Value="#A9E52E" />
+            <Setter Property="SelectionBrush" Value="#648A26" />
             <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="EditorSurface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="EditorSurface" Property="BorderBrush" Value="#51685B" />
+                                <Setter TargetName="EditorSurface" Property="Background" Value="#121D17" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="EditorSurface" Property="BorderBrush" Value="#A9E52E" />
+                                <Setter TargetName="EditorSurface" Property="Background" Value="#15221B" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style TargetType="Button">
+        <Style TargetType="TextBox" BasedOn="{StaticResource PlannerEditor}" />
+        <Style TargetType="Button" BasedOn="{StaticResource AppButton}">
             <Setter Property="Padding" Value="18,9" />
             <Setter Property="Margin" Value="8,0,0,0" />
         </Style>
+        <Style x:Key="ColumnLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#71857A" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="24">
+    <Grid Margin="28,22,28,20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel>
-            <TextBlock Text="本周购买建议" FontSize="21" FontWeight="SemiBold" />
-            <TextBlock Margin="0,5,0,0" Foreground="#9DAEA5" FontSize="12"
-                       Text="先最大化购买件数，再按预测最低价选择日期和物资。" />
-        </StackPanel>
-
-        <Grid Grid.Row="1" Margin="0,18,0,6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="130" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="地区" Foreground="#65786E" FontSize="10" />
-            <TextBlock Grid.Column="1" Text="当前可买" Foreground="#65786E" FontSize="10" HorizontalAlignment="Center" />
-            <TextBlock Grid.Column="2" Text="上限" Foreground="#65786E" FontSize="10" HorizontalAlignment="Center" />
-            <TextBlock Grid.Column="3" Text="每日恢复" Foreground="#65786E" FontSize="10" HorizontalAlignment="Center" />
-        </Grid>
-
-        <ItemsControl x:Name="RegionFields" Grid.Row="2">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border BorderBrush="#27342C" BorderThickness="0,0,0,1" Padding="0,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding Region}" Foreground="#E6EDE9"
-                                       FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Margin="0,0,12,0"
-                                     Text="{Binding Current, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBox Grid.Column="2" Margin="0,0,12,0"
-                                     Text="{Binding Limit, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBox Grid.Column="3"
-                                     Text="{Binding DailyRecovery, UpdateSourceTrigger=PropertyChanged}" />
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="0,18,0,16">
-            <ItemsControl x:Name="AdviceGroups">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border BorderBrush="#2B3831" BorderThickness="1" Background="#0D1411"
-                                Padding="16" Margin="0,0,0,12">
-                            <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Region}" FontSize="16" FontWeight="SemiBold" />
-                                    <TextBlock Grid.Column="1" Text="{Binding TotalText}" Foreground="#DDF4AF"
-                                               FontSize="15" FontWeight="SemiBold" />
-                                </Grid>
-                                <TextBlock Text="{Binding Message}" Margin="0,6,0,12"
-                                           Foreground="#9DAEA5" FontSize="12" TextWrapping="Wrap" />
-                                <TextBlock Text="{Binding EmptyText}" Foreground="#65786E" FontSize="12" />
-                                <ItemsControl ItemsSource="{Binding Lines}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border BorderBrush="#27342C" BorderThickness="0,1,0,0" Padding="0,9">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="110" />
-                                                        <ColumnDefinition Width="92" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="86" />
-                                                        <ColumnDefinition Width="96" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding DateText}" Foreground="#DCE6E0"
-                                                               VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding QuantityText}"
-                                                               Foreground="#A9E52E" FontWeight="SemiBold"
-                                                               VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="2" Text="{Binding ItemName}"
-                                                               Foreground="#E6EDE9" VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="3" Text="{Binding PriceText}"
-                                                               Foreground="#879A90" HorizontalAlignment="Right"
-                                                               VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="4" Text="{Binding AvailableText}"
-                                                               Foreground="#65786E" HorizontalAlignment="Right"
-                                                               VerticalAlignment="Center" />
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-
-        <Grid Grid.Row="4">
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock x:Name="SummaryText" Foreground="#71847A" FontSize="11" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Content="关闭" Click="Close_Click" />
-                <Button Content="生成建议" Background="#A9E52E" Foreground="#0B100E"
-                        BorderBrush="#A9E52E" Click="Generate_Click" />
+            <StackPanel>
+                <TextBlock Text="本周购买建议" FontSize="21" FontWeight="SemiBold" />
+                <TextBlock Margin="0,6,0,0" Foreground="#91A49A" FontSize="11"
+                           Text="先最大化购买件数，再按预测最低价安排日期与物资。" />
             </StackPanel>
+            <Border Grid.Column="1" Padding="10,6" VerticalAlignment="Top"
+                    Background="#17221C" CornerRadius="2">
+                <TextBlock Text="本周计划" Foreground="#A9E52E" FontSize="10" FontWeight="SemiBold" />
+            </Border>
         </Grid>
+
+        <Grid x:Name="SettingsSection" Grid.Row="1" Margin="0,22,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="01" Foreground="#A9E52E" FontSize="10" FontWeight="Bold"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="购买额度" Margin="10,0,0,0"
+                           Foreground="#E2EBE6" FontSize="14" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="2" Text="填写各地区当前额度与恢复规则"
+                           Foreground="#61756A" FontSize="10" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Grid.Row="1" Margin="0,10,0,0" Background="#0D1511"
+                    BorderBrush="#29382F" BorderThickness="0,1,0,1">
+                <StackPanel>
+                    <Grid Height="34" Background="#0A110E">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="132" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="地区" Margin="16,0,0,0" Style="{StaticResource ColumnLabel}" />
+                        <TextBlock Grid.Column="1" Text="当前可买" Style="{StaticResource ColumnLabel}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="容量上限" Style="{StaticResource ColumnLabel}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="每日恢复" Style="{StaticResource ColumnLabel}"
+                                   HorizontalAlignment="Center" />
+                    </Grid>
+                    <ItemsControl x:Name="RegionFields">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="RegionRow" Padding="0,10"
+                                        BorderBrush="#223129" BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="132" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="3" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="3" Height="20" Background="#A9E52E" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Region}" Margin="13,0,0,0"
+                                                       Foreground="#E4ECE7" FontSize="13" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                        <TextBox Grid.Column="1" Margin="12,0,6,0"
+                                                 Text="{Binding Current, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Grid.Column="2" Margin="6,0"
+                                                 Text="{Binding Limit, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Grid.Column="3" Margin="6,0,12,0"
+                                                 Text="{Binding DailyRecovery, UpdateSourceTrigger=PropertyChanged}" />
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <Trigger SourceName="RegionRow" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="RegionRow" Property="Background" Value="#121E18" />
+                                    </Trigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ResultsSection" Grid.Row="2" Margin="0,22,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="02" Foreground="#A9E52E" FontSize="10" FontWeight="Bold"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="购买计划" Margin="10,0,0,0"
+                           Foreground="#E2EBE6" FontSize="14" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="2" Text="按执行日期排序"
+                           Foreground="#61756A" FontSize="10" VerticalAlignment="Center" />
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,10,0,0">
+                <Border x:Name="AdviceEmptyState" BorderBrush="#29382F" BorderThickness="0,1,0,1"
+                        Background="#0D1511" MinHeight="142">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="—" Foreground="#A9E52E" FontSize="22"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="尚未生成购买计划" Margin="0,5,0,0"
+                                   Foreground="#B3C2BA" FontSize="12" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="确认上方额度后点击“生成建议”" Margin="0,5,0,0"
+                                   Foreground="#61756A" FontSize="10" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer x:Name="AdviceResultsScroller" Visibility="Collapsed"
+                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="AdviceGroups">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="AdviceGroup" Padding="0,14"
+                                        BorderBrush="#29382F" BorderThickness="0,1,0,0"
+                                        Opacity="0">
+                                    <Border.Triggers>
+                                        <EventTrigger RoutedEvent="Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                     To="1" Duration="0:0:0.18" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Border.Triggers>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Region}" Foreground="#E9F0EC"
+                                                       FontSize="15" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Column="1" Text="{Binding TotalText}" Foreground="#A9E52E"
+                                                       FontSize="14" FontWeight="SemiBold" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding Message}" Margin="0,5,0,10"
+                                                   Foreground="#879A90" FontSize="11" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding EmptyText}" Foreground="#61756A" FontSize="11" />
+                                        <ItemsControl ItemsSource="{Binding Lines}" AlternationCount="2">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border x:Name="AdviceLine" Padding="10,9"
+                                                            BorderBrush="#223129" BorderThickness="0,0,0,1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="104" />
+                                                                <ColumnDefinition Width="88" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="78" />
+                                                                <ColumnDefinition Width="112" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Text="{Binding DateText}" Foreground="#C9D5CF"
+                                                                       VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding QuantityText}"
+                                                                       Foreground="#A9E52E" FontWeight="SemiBold"
+                                                                       VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding ItemName}"
+                                                                       Foreground="#E6EDE9" VerticalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Grid.Column="3" Text="{Binding PriceText}"
+                                                                       Foreground="#9AADA3" HorizontalAlignment="Right"
+                                                                       VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="4" Text="{Binding AvailableText}"
+                                                                       Foreground="#61756A" HorizontalAlignment="Right"
+                                                                       VerticalAlignment="Center" />
+                                                        </Grid>
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                                            <Setter TargetName="AdviceLine" Property="Background" Value="#0D1511" />
+                                                        </Trigger>
+                                                        <Trigger SourceName="AdviceLine" Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="AdviceLine" Property="Background" Value="#142019" />
+                                                        </Trigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <Border Grid.Row="3" Margin="0,14,0,0" Padding="0,14,0,0"
+                BorderBrush="#29372F" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="SummaryText" Foreground="#7F9388" FontSize="11" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="关闭" Click="Close_Click" />
+                    <Button Content="生成建议" Style="{StaticResource AppAccentButton}" Margin="8,0,0,0"
+                            Click="Generate_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

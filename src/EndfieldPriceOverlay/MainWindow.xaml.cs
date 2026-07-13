@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         {
             CenterOnCurrentMonitor();
             RefreshItems();
+            AnimateWindowEntrance();
         };
     }
 
@@ -72,9 +73,7 @@ public partial class MainWindow : Window
 
     private async void Recognize_Click(object sender, RoutedEventArgs e)
     {
-        RecognizeButton.IsEnabled = false;
-        BatchRecognizeButton.IsEnabled = false;
-        RecognizeButton.Content = "正在识别…";
+        SetRecognitionBusy(RecognizeButton, "正在识别…");
         StatusText.Text = "正在截取 Endfield 窗口并进行离线 OCR…";
         try
         {
@@ -98,17 +97,13 @@ public partial class MainWindow : Window
         }
         finally
         {
-            RecognizeButton.IsEnabled = true;
-            BatchRecognizeButton.IsEnabled = true;
-            RecognizeButton.Content = "识别当前物资";
+            ClearRecognitionBusy();
         }
     }
 
     private async void BatchRecognize_Click(object sender, RoutedEventArgs e)
     {
-        RecognizeButton.IsEnabled = false;
-        BatchRecognizeButton.IsEnabled = false;
-        BatchRecognizeButton.Content = "正在批量识别…";
+        SetRecognitionBusy(BatchRecognizeButton, "正在批量识别…");
         StatusText.Text = "正在识别地区调度页的全部今日价格…";
         try
         {
@@ -132,9 +127,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            RecognizeButton.IsEnabled = true;
-            BatchRecognizeButton.IsEnabled = true;
-            BatchRecognizeButton.Content = "批量识别今日价格";
+            ClearRecognitionBusy();
         }
     }
 
@@ -218,6 +211,84 @@ public partial class MainWindow : Window
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         MainTrend.BeginAnimation(OpacityProperty, reveal);
+        AnimateSelectionHeader();
+    }
+
+    private void SetRecognitionBusy(Button activeButton, string content)
+    {
+        RecognizeButton.IsEnabled = false;
+        BatchRecognizeButton.IsEnabled = false;
+        activeButton.Tag = "Busy";
+        activeButton.Content = content;
+        StatusDot.BeginAnimation(OpacityProperty, new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(420))
+        {
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
+        });
+    }
+
+    private void ClearRecognitionBusy()
+    {
+        RecognizeButton.Tag = null;
+        BatchRecognizeButton.Tag = null;
+        RecognizeButton.IsEnabled = true;
+        BatchRecognizeButton.IsEnabled = true;
+        RecognizeButton.Content = "识别当前物资";
+        BatchRecognizeButton.Content = "批量识别今日价格";
+        StatusDot.BeginAnimation(OpacityProperty, null);
+        StatusDot.Opacity = 1;
+    }
+
+    private void AnimateWindowEntrance()
+    {
+        AnimateEntrance(ItemsPanel, -14, 0);
+        AnimateEntrance(RightContentGrid, 18, 55);
+        AnimateEntrance(StatusBar, 0, 120);
+    }
+
+    private static void AnimateEntrance(FrameworkElement element, double offsetX, int delayMilliseconds)
+    {
+        var transform = new TranslateTransform(offsetX, 0);
+        element.RenderTransform = transform;
+        element.Opacity = 0;
+
+        var duration = TimeSpan.FromMilliseconds(260);
+        var delay = TimeSpan.FromMilliseconds(delayMilliseconds);
+        var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        var opacity = new DoubleAnimation(0, 1, duration)
+        {
+            BeginTime = delay,
+            EasingFunction = easing,
+        };
+        var movement = new DoubleAnimation(offsetX, 0, duration)
+        {
+            BeginTime = delay,
+            EasingFunction = easing,
+        };
+        opacity.Completed += (_, _) =>
+        {
+            element.Opacity = 1;
+            element.BeginAnimation(OpacityProperty, null);
+            transform.X = 0;
+            transform.BeginAnimation(TranslateTransform.XProperty, null);
+        };
+        element.BeginAnimation(OpacityProperty, opacity);
+        transform.BeginAnimation(TranslateTransform.XProperty, movement);
+    }
+
+    private void AnimateSelectionHeader()
+    {
+        var transform = SelectedHeader.RenderTransform as TranslateTransform ?? new TranslateTransform();
+        SelectedHeader.RenderTransform = transform;
+        SelectedHeader.BeginAnimation(OpacityProperty, new DoubleAnimation(0.55, 1, TimeSpan.FromMilliseconds(150))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        });
+        transform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(6, 0, TimeSpan.FromMilliseconds(150))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        });
     }
 
     private void UpdateCandidateTrends(PredictionStatus status)

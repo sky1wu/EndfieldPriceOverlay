@@ -12,7 +12,7 @@
             <Setter Property="Padding" Value="8,7" />
             <Setter Property="CaretBrush" Value="#A9E52E" />
         </Style>
-        <Style TargetType="Button">
+        <Style TargetType="Button" BasedOn="{StaticResource AppButton}">
             <Setter Property="Padding" Value="18,9" />
             <Setter Property="Margin" Value="8,0,0,0" />
         </Style>
@@ -95,7 +95,8 @@
         </ItemsControl>
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="取消" Click="Cancel_Click" />
-            <Button Content="确认记录" Background="#A9E52E" Foreground="#0B100E" BorderBrush="#A9E52E" Click="Confirm_Click" />
+            <Button Content="确认记录" Style="{StaticResource AppAccentButton}"
+                    Margin="8,0,0,0" Click="Confirm_Click" />
         </StackPanel>
     </Grid>
 </Window>

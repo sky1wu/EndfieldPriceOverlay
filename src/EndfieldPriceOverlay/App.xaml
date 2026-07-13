@@ -5,6 +5,146 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <SolidColorBrush x:Key="AppAccent" Color="#A9E52E" />
+        <ControlTemplate x:Key="AppButtonTemplate" TargetType="Button">
+            <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
+                <Border x:Name="Surface"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="4">
+                    <Grid ClipToBounds="True">
+                        <Border x:Name="InteractionLayer" Background="#FFFFFFFF" Opacity="0" />
+                        <Border x:Name="PressLayer" Background="#FF000000" Opacity="0" />
+                        <Border x:Name="HoverLine" Height="2" Opacity="0.58"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Top"
+                                Background="{TemplateBinding Foreground}"
+                                RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="HoverLineScale" ScaleX="0" />
+                            </Border.RenderTransform>
+                        </Border>
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          RecognizesAccessKey="True"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </Grid>
+                </Border>
+                <Border x:Name="FocusRing" BorderBrush="{StaticResource AppAccent}"
+                        BorderThickness="1" CornerRadius="4" Opacity="0"
+                        IsHitTestVisible="False" />
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="InteractionLayer"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 To="0.075" Duration="0:0:0.12" />
+                                <DoubleAnimation Storyboard.TargetName="HoverLineScale"
+                                                 Storyboard.TargetProperty="ScaleX"
+                                                 To="1" Duration="0:0:0.16">
+                                    <DoubleAnimation.EasingFunction>
+                                        <QuadraticEase EasingMode="EaseOut" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="InteractionLayer"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 To="0" Duration="0:0:0.12" />
+                                <DoubleAnimation Storyboard.TargetName="HoverLineScale"
+                                                 Storyboard.TargetProperty="ScaleX"
+                                                 To="0" Duration="0:0:0.11" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="Root" Property="RenderTransform">
+                        <Setter.Value>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="0.985" ScaleY="0.985" />
+                                <TranslateTransform Y="1" />
+                            </TransformGroup>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter TargetName="PressLayer" Property="Opacity" Value="0.14" />
+                </Trigger>
+                <Trigger Property="IsDefault" Value="True">
+                    <Setter TargetName="FocusRing" Property="Opacity" Value="0.42" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter TargetName="FocusRing" Property="Opacity" Value="1" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Trigger>
+                <Trigger Property="Tag" Value="Busy">
+                    <Setter TargetName="Root" Property="Opacity" Value="0.9" />
+                    <Setter TargetName="HoverLine" Property="RenderTransform">
+                        <Setter.Value>
+                            <ScaleTransform ScaleX="1" />
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="Cursor" Value="Wait" />
+                    <Trigger.EnterActions>
+                        <BeginStoryboard x:Name="BusyPulse">
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="InteractionLayer"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 From="0.02" To="0.12" Duration="0:0:0.65"
+                                                 AutoReverse="True" RepeatBehavior="Forever" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <RemoveStoryboard BeginStoryboardName="BusyPulse" />
+                    </Trigger.ExitActions>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="AppButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Foreground" Value="#EAF2ED" />
+            <Setter Property="Background" Value="#19241E" />
+            <Setter Property="BorderBrush" Value="#3A4B42" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template" Value="{StaticResource AppButtonTemplate}" />
+        </Style>
+        <Style TargetType="Button" BasedOn="{StaticResource AppButton}" />
+        <Style x:Key="AppAccentButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Foreground" Value="#0A100D" />
+            <Setter Property="Background" Value="{StaticResource AppAccent}" />
+            <Setter Property="BorderBrush" Value="#C7F960" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="AppQuietButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Foreground" Value="#D7E3DC" />
+            <Setter Property="Background" Value="#141E19" />
+            <Setter Property="BorderBrush" Value="#34463C" />
+        </Style>
+        <Style x:Key="AppGhostButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Foreground" Value="#9FB1A7" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style x:Key="AppDangerButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Foreground" Value="#F0AAA3" />
+            <Setter Property="Background" Value="#251917" />
+            <Setter Property="BorderBrush" Value="#65413D" />
+        </Style>
         <Style x:Key="AppScrollPageButton" TargetType="RepeatButton">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="IsTabStop" Value="False" />
