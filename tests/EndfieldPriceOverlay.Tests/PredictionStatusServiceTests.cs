@@ -203,6 +203,10 @@ public sealed class PredictionStatusServiceTests : IDisposable
 
         Assert.Equal(PredictionState.Filtering, status.State);
         Assert.Contains("还剩 3 种", status.Message);
+        Assert.Equal(3, status.CandidateTrends.Count);
+        Assert.Equal(
+            status.CandidateTrends.Count,
+            status.CandidateTrends.Select(trend => string.Join(',', trend.Prices)).Distinct().Count());
         Assert.Collection(
             status.Ranges,
             tuesday => Assert.Equal((2174, 4659), (tuesday.Minimum, tuesday.Maximum)),

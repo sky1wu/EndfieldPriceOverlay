@@ -73,7 +73,11 @@ public sealed class PredictionStatusService(
                 $"ε 尚有 {analysis.CandidateCount} 个候选；预计还需未来 1 天的数据，若仍未收敛再补 1 天",
                 [],
                 [],
-                1);
+                1)
+            {
+                CandidateTrends = DistinctTrends(
+                    analysis.CandidateForecasts?.SelectMany(candidate => candidate.Possibilities) ?? []),
+            };
         }
 
         return TryBuildCurrentWeekStatus(
@@ -142,7 +146,10 @@ public sealed class PredictionStatusService(
                 : $"本周走势还剩 {survivors.Length} 种；还需未来 1 天的数据以继续排除",
             [],
             ranges,
-            1);
+            1)
+        {
+            CandidateTrends = DistinctTrends(survivors),
+        };
         return true;
     }
 
@@ -154,6 +161,11 @@ public sealed class PredictionStatusService(
             : $"还需未来 {days} 天的数据；记录到星期日即可形成一周完整价格";
         return new(PredictionState.Insufficient, message, [], [], days);
     }
+
+    private static CandidateTrend[] DistinctTrends(IEnumerable<PricePrediction> predictions) => predictions
+        .GroupBy(item => string.Join(',', item.Prices))
+        .Select(group => new CandidateTrend(group.First().Prices.ToArray()))
+        .ToArray();
 
     private static SortedDictionary<DateOnly, int?[]> GroupWeeks(IReadOnlyDictionary<DateOnly, int> dated)
     {

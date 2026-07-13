@@ -385,7 +385,7 @@
 
                 <Border Grid.Column="1" Background="{StaticResource Line}" />
 
-                <Grid Grid.Column="2" Margin="28,24">
+                <Grid x:Name="RightContentGrid" Grid.Column="2" Margin="28,24">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -451,12 +451,18 @@
                             <TextBlock x:Name="PredictionMessageText" Text="记录完整数据后显示预测结果"
                                        Foreground="#D8A934" FontSize="12" Margin="0,6,14,0" TextWrapping="Wrap" />
                         </StackPanel>
-                        <Border x:Name="RequiredDaysBadge" Grid.Column="1" Visibility="Collapsed"
-                                Background="#1A251F" BorderBrush="#39483F" BorderThickness="1"
-                                Padding="12,7" VerticalAlignment="Top">
-                            <TextBlock x:Name="RequiredDaysText" Text="还需 1 天" Foreground="{StaticResource Accent}"
-                                       FontSize="14" FontWeight="SemiBold" />
-                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                            <Border x:Name="RequiredDaysBadge" Visibility="Collapsed"
+                                    Background="#1A251F" BorderBrush="#39483F" BorderThickness="1"
+                                    Padding="12,7" HorizontalAlignment="Right">
+                                <TextBlock x:Name="RequiredDaysText" Text="还需 1 天" Foreground="{StaticResource Accent}"
+                                           FontSize="14" FontWeight="SemiBold" />
+                            </Border>
+                            <Button x:Name="CandidateTrendsButton" Visibility="Collapsed"
+                                    Margin="0,6,0,0" Padding="12,6" HorizontalAlignment="Right"
+                                    Foreground="{StaticResource Accent}" FontSize="11"
+                                    Content="展开全部走势" Click="CandidateTrends_Click" />
+                        </StackPanel>
                     </Grid>
 
                     <Border Grid.Row="3" Margin="0,12,0,20" Background="#0D1411"
@@ -466,6 +472,92 @@
                             <TextBlock x:Name="ForecastEmptyText" Text="暂无本周价格数据"
                                        Foreground="#65786E" FontSize="12"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="CandidateTrendsPanel" Grid.Row="1" Grid.RowSpan="3"
+                            Margin="0,12,0,20" Panel.ZIndex="4" Visibility="Collapsed"
+                            Background="#101713" BorderBrush="#405247" BorderThickness="1">
+                        <Grid Margin="14,12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock x:Name="CandidateTrendsTitle" Text="全部候选走势"
+                                               Foreground="#EFF5F1" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="CandidateWeekText" Margin="0,4,0,0"
+                                               Foreground="#71847A" FontSize="10"
+                                               Text="相同价格序列已合并" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="收起" Padding="12,6"
+                                        VerticalAlignment="Top" Click="CloseCandidateTrends_Click" />
+                            </Grid>
+
+                            <Grid Grid.Row="1" Margin="0,12,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28" />
+                                    <ColumnDefinition Width="88" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1" Text="走势" Foreground="#65786E" FontSize="9"
+                                           HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="一" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="二" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="三" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="5" Text="四" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="6" Text="五" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="7" Text="六" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="8" Text="日" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl x:Name="CandidateTrendRows">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#27342C" BorderThickness="0,0,0,1" Padding="0,6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="28" />
+                                                        <ColumnDefinition Width="88" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding IndexText}" Foreground="#71847A" FontSize="9"
+                                                               VerticalAlignment="Center" />
+                                                    <local:TrendControl Grid.Column="1" Height="30" Margin="3,0,9,0"
+                                                                        Values="{Binding Trend}" ShowGrid="False" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Prices[0]}" Foreground="#DCE6E0" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="3" Text="{Binding Prices[1]}" Foreground="#DCE6E0" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="4" Text="{Binding Prices[2]}" Foreground="#DCE6E0" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="5" Text="{Binding Prices[3]}" Foreground="#DCE6E0" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="6" Text="{Binding Prices[4]}" Foreground="#DCE6E0" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="7" Text="{Binding Prices[5]}" Foreground="#DCE6E0" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="8" Text="{Binding Prices[6]}" Foreground="#DCE6E0" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                         </Grid>
                     </Border>
 

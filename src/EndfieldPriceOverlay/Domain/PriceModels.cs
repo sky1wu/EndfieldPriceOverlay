@@ -165,9 +165,14 @@ public sealed record FuturePrice(DateOnly Date, int Weekday, int Price);
 
 public sealed record FutureRange(DateOnly Date, int Weekday, int Minimum, int Maximum);
 
+public sealed record CandidateTrend(IReadOnlyList<int> Prices);
+
 public sealed record PredictionStatus(
     PredictionState State,
     string Message,
     IReadOnlyList<FuturePrice> Future,
     IReadOnlyList<FutureRange> Ranges,
-    int? RequiredFutureDays = null);
+    int? RequiredFutureDays = null)
+{
+    public IReadOnlyList<CandidateTrend> CandidateTrends { get; init; } = [];
+}

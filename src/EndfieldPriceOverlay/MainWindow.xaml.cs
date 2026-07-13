@@ -193,6 +193,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        HideCandidateTrends();
         SelectedNameText.Text = row.Name;
         EditPricesButton.IsEnabled = true;
         SelectedMetaText.Text = $"最近记录 {row.Summary.LatestDate:yyyy-MM-dd} · {row.Summary.RecordedDays} 个有效日期";
@@ -210,12 +211,53 @@ public partial class MainWindow : Window
         ForecastChart.Values = weekPrices;
         ForecastChart.Visibility = hasWeekPrices ? Visibility.Visible : Visibility.Collapsed;
         ForecastEmptyText.Visibility = hasWeekPrices ? Visibility.Collapsed : Visibility.Visible;
+        UpdateCandidateTrends(status);
 
         var reveal = new DoubleAnimation(0.35, 1, TimeSpan.FromMilliseconds(180))
         {
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         MainTrend.BeginAnimation(OpacityProperty, reveal);
+    }
+
+    private void UpdateCandidateTrends(PredictionStatus status)
+    {
+        var candidates = status.CandidateTrends;
+        CandidateTrendsButton.Visibility = status.State != PredictionState.Ready && candidates.Count > 1
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        CandidateTrendsButton.Content = $"展开全部 {candidates.Count} 种走势";
+
+        var today = GameCalendar.DateAt(DateTime.Now);
+        var monday = today.AddDays(-((int)today.DayOfWeek + 6) % 7);
+        CandidateTrendsTitle.Text = $"全部候选走势 · {candidates.Count}";
+        CandidateWeekText.Text = $"相同价格序列已合并 · {monday:yyyy-MM-dd} — {monday.AddDays(6):MM-dd}";
+        CandidateTrendRows.ItemsSource = candidates
+            .Select((candidate, index) => new CandidateTrendRow(
+                $"{index + 1:00}",
+                candidate.Prices.ToArray(),
+                candidate.Prices
+                    .Select((price, day) => new TrendDatum(monday.AddDays(day), price))
+                    .ToArray()))
+            .ToArray();
+    }
+
+    private void CandidateTrends_Click(object sender, RoutedEventArgs e)
+    {
+        CandidateTrendsPanel.Visibility = Visibility.Visible;
+        var reveal = new DoubleAnimation(0.2, 1, TimeSpan.FromMilliseconds(160))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        CandidateTrendsPanel.BeginAnimation(OpacityProperty, reveal);
+    }
+
+    private void CloseCandidateTrends_Click(object sender, RoutedEventArgs e) => HideCandidateTrends();
+
+    private void HideCandidateTrends()
+    {
+        CandidateTrendsPanel.BeginAnimation(OpacityProperty, null);
+        CandidateTrendsPanel.Visibility = Visibility.Collapsed;
     }
 
     private WeekPriceDatum[] BuildWeekPrices(string itemName, PredictionStatus status)
@@ -529,6 +571,7 @@ public partial class MainWindow : Window
 
     private void ShowEmptyState()
     {
+        HideCandidateTrends();
         EditPricesButton.IsEnabled = false;
         SelectedNameText.Text = "等待记录";
         SelectedMetaText.Text = "打开物资详情页或地区调度页，然后开始识别";
@@ -538,6 +581,8 @@ public partial class MainWindow : Window
         ForecastChart.Values = null;
         ForecastChart.Visibility = Visibility.Collapsed;
         ForecastEmptyText.Visibility = Visibility.Visible;
+        CandidateTrendsButton.Visibility = Visibility.Collapsed;
+        CandidateTrendRows.ItemsSource = null;
     }
 
     private void EditPrices_Click(object sender, RoutedEventArgs e)
@@ -684,5 +729,10 @@ public partial class MainWindow : Window
         int[] Prices,
         TrendDatum[] Trend,
         ItemSummary Summary);
+
+    private sealed record CandidateTrendRow(
+        string IndexText,
+        int[] Prices,
+        TrendDatum[] Trend);
 
 }
