@@ -41,6 +41,7 @@ public sealed class PricePredictionService
         return target.Grid.Select((grid, index) =>
         {
             var value = epsilon[index] ?? fallback?[index] ?? 0;
+            value = Math.Clamp(value, -0.5, 0.5);
             return JavaScriptRound(grid * (1 + target.Coeff * value));
         }).ToArray();
     }
@@ -188,42 +189,83 @@ public sealed class PricePredictionService
         }
 
         var completeWeeks = records.Where(record => record.Prices.All(price => price is not null)).ToArray();
-        if (completeWeeks.Length == 0)
+        return AnalyzeConsecutiveWeeks(records, completeWeeks);
+    }
+
+    private AnalysisResult AnalyzeConsecutiveWeeks(
+        IReadOnlyList<WeekRecord> records,
+        IReadOnlyList<WeekRecord> completeWeeks)
+    {
+        Dictionary<int, PricePrediction>? candidateSet = null;
+        for (var index = 0; index < records.Count - 1; index++)
+        {
+            var predictions = EnumerateAllPredictions(EnumerateEpsilonCandidates(records[index].Prices));
+            var matched = FilterPredictions(predictions, records[index + 1].Prices);
+            if (matched.Count == 0)
+            {
+                continue;
+            }
+
+            var round = matched
+                .GroupBy(item => item.SourceTemplate.Id)
+                .ToDictionary(group => group.Key, group => group.MinBy(item => item.Residual)!);
+            if (candidateSet is null)
+            {
+                candidateSet = round;
+                continue;
+            }
+
+            var intersection = round
+                .Where(pair => candidateSet.ContainsKey(pair.Key))
+                .ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.Residual < candidateSet[pair.Key].Residual
+                        ? pair.Value
+                        : candidateSet[pair.Key]);
+            if (intersection.Count > 0)
+            {
+                candidateSet = intersection;
+            }
+        }
+
+        if (candidateSet is null || candidateSet.Count == 0)
         {
             return FirstWeek(records[^1]);
         }
 
-        var candidates = FitEpsilonCandidates(records, completeWeeks[^1]);
-        if (candidates.Length == 0)
-        {
-            return FirstWeek(records[^1]);
-        }
-
-        var ordered = candidates.OrderBy(item => item.Residual).ThenBy(item => item.SourceTemplate.Id).ToArray();
+        var ordered = candidateSet.Values
+            .OrderBy(item => item.Residual)
+            .ThenBy(item => item.SourceTemplate.Id)
+            .ToArray();
         var best = ordered[0];
-        var unique = ordered.Length == 1;
-        var fullEpsilon = best.Epsilon;
+        var unique = ordered.Length == 1 && completeWeeks.Count > 0;
+        var fullEpsilon = completeWeeks.Count > 0
+            ? ComputeEpsilon(completeWeeks[^1].Prices, best.SourceTemplate)
+            : best.Epsilon;
 
         var eight = Templates.Select(target => new PricePrediction(
             best.SourceTemplate,
             target,
-            fullEpsilon,
-            Predict(fullEpsilon, target, fullEpsilon))).ToArray();
+            best.Epsilon,
+            Predict(best.Epsilon, target, fullEpsilon))).ToArray();
 
         IReadOnlyList<CandidateForecast>? forecasts = null;
         if (!unique)
         {
             forecasts = ordered.Select(candidate =>
             {
+                var candidateEpsilon = completeWeeks.Count > 0
+                    ? ComputeEpsilon(completeWeeks[^1].Prices, candidate.SourceTemplate)
+                    : candidate.Epsilon;
                 var possibilities = Templates.Select(target => new PricePrediction(
                     candidate.SourceTemplate,
                     target,
-                    candidate.Epsilon,
-                    Predict(candidate.Epsilon, target, candidate.Epsilon))).ToArray();
+                    candidateEpsilon,
+                    Predict(candidateEpsilon, target, candidateEpsilon))).ToArray();
                 return new CandidateForecast(
                     candidate.SourceTemplate,
                     candidate.Residual,
-                    candidate.Epsilon,
+                    candidateEpsilon,
                     possibilities);
             }).ToArray();
         }
@@ -234,34 +276,13 @@ public sealed class PricePredictionService
             Epsilon = fullEpsilon,
             RawEpsilon = best.Epsilon,
             LockedSourceTemplate = best.SourceTemplate,
-            LockedTargetTemplate = best.SourceTemplate,
+            LockedTargetTemplate = best.TargetTemplate,
             EightPredictions = eight,
             CandidateForecasts = forecasts,
             WeekCount = records.Count,
             CandidateCount = ordered.Length,
         };
     }
-
-    private FittedEpsilonCandidate[] FitEpsilonCandidates(IReadOnlyList<WeekRecord> records, WeekRecord reference)
-    {
-        var scored = Templates.Select(source =>
-        {
-            var epsilon = ComputeEpsilon(reference.Prices, source);
-            var residual = records.Sum(record => BestResidual(epsilon, record.Prices));
-            return new FittedEpsilonCandidate(source, epsilon, residual);
-        }).OrderBy(item => item.Residual).ToArray();
-        if (scored.Length == 0)
-        {
-            return [];
-        }
-
-        var threshold = Math.Max(scored[0].Residual * 5, MatchThreshold);
-        var filtered = scored.Where(item => item.Residual <= threshold).ToArray();
-        return filtered.Length > 0 ? filtered : [scored[0]];
-    }
-
-    private double BestResidual(IReadOnlyList<double?> epsilon, IReadOnlyList<int?> actual) =>
-        Templates.Min(target => MatchResidual(Predict(epsilon, target, epsilon), actual));
 
     private AnalysisResult FirstWeek(WeekRecord record)
     {
@@ -277,11 +298,6 @@ public sealed class PricePredictionService
     }
 
     private static int JavaScriptRound(double value) => (int)Math.Floor(value + 0.5);
-
-    private sealed record FittedEpsilonCandidate(
-        PriceTemplate SourceTemplate,
-        double?[] Epsilon,
-        double Residual);
 
     private static void ValidateWeek<T>(IReadOnlyList<T> values)
     {

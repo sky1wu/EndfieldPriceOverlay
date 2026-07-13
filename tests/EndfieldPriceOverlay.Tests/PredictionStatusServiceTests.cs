@@ -143,7 +143,7 @@ public sealed class PredictionStatusServiceTests : IDisposable
     }
 
     [Fact]
-    public void RepeatedCompleteWeeksLockNewWeekFromMondayPrice()
+    public void RepeatedCompleteWeeksRemainUncertainLikeTheWebTool()
     {
         var store = new CaptureStore(Path.Combine(directory, "new-week-lock.db"));
         store.ApplyPriceChanges("悬空鼷兽骨雕货组",
@@ -169,45 +169,48 @@ public sealed class PredictionStatusServiceTests : IDisposable
 
         var status = service.Get("悬空鼷兽骨雕货组", new DateOnly(2026, 7, 13));
 
-        Assert.Equal(PredictionState.Ready, status.State);
-        Assert.Equal(0, status.RequiredFutureDays);
+        Assert.Equal(PredictionState.Filtering, status.State);
+        Assert.Empty(status.Future);
+        Assert.NotEmpty(status.Ranges);
+    }
+
+    [Fact]
+    public void WuxiaMovieDataKeepsTheSameThreeTrendsAsTheWebTool()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "wuxia-movie.db"));
+        store.ApplyPriceChanges("武侠电影货组",
+        [
+            new(new DateOnly(2026, 6, 28), 3502),
+            new(new DateOnly(2026, 6, 29), 2532),
+            new(new DateOnly(2026, 6, 30), 1202),
+            new(new DateOnly(2026, 7, 1), 2254),
+            new(new DateOnly(2026, 7, 2), 1200),
+            new(new DateOnly(2026, 7, 3), 4295),
+            new(new DateOnly(2026, 7, 4), 1000),
+            new(new DateOnly(2026, 7, 5), 3502),
+            new(new DateOnly(2026, 7, 6), 2201),
+            new(new DateOnly(2026, 7, 7), 2174),
+            new(new DateOnly(2026, 7, 8), 1334),
+            new(new DateOnly(2026, 7, 9), 2400),
+            new(new DateOnly(2026, 7, 10), 1806),
+            new(new DateOnly(2026, 7, 11), 2400),
+            new(new DateOnly(2026, 7, 12), 1467),
+            new(new DateOnly(2026, 7, 13), 2201),
+        ]);
+        var service = new PredictionStatusService(store, new PricePredictionService());
+
+        var status = service.Get("武侠电影货组", new DateOnly(2026, 7, 13));
+
+        Assert.Equal(PredictionState.Filtering, status.State);
+        Assert.Contains("还剩 3 种", status.Message);
         Assert.Collection(
-            status.Future,
-            monday =>
-            {
-                Assert.Equal(new DateOnly(2026, 7, 13), monday.Date);
-                Assert.Equal(1800, monday.Price);
-            },
-            tuesday =>
-            {
-                Assert.Equal(new DateOnly(2026, 7, 14), tuesday.Date);
-                Assert.Equal(2268, tuesday.Price);
-            },
-            wednesday =>
-            {
-                Assert.Equal(new DateOnly(2026, 7, 15), wednesday.Date);
-                Assert.Equal(2600, wednesday.Price);
-            },
-            thursday =>
-            {
-                Assert.Equal(new DateOnly(2026, 7, 16), thursday.Date);
-                Assert.Equal(2029, thursday.Price);
-            },
-            friday =>
-            {
-                Assert.Equal(new DateOnly(2026, 7, 17), friday.Date);
-                Assert.Equal(3357, friday.Price);
-            },
-            saturday =>
-            {
-                Assert.Equal(new DateOnly(2026, 7, 18), saturday.Date);
-                Assert.Equal(1289, saturday.Price);
-            },
-            sunday =>
-            {
-                Assert.Equal(new DateOnly(2026, 7, 19), sunday.Date);
-                Assert.Equal(1507, sunday.Price);
-            });
+            status.Ranges,
+            tuesday => Assert.Equal((2174, 4659), (tuesday.Minimum, tuesday.Maximum)),
+            wednesday => Assert.Equal((711, 1334), (wednesday.Minimum, wednesday.Maximum)),
+            thursday => Assert.Equal((2400, 7200), (thursday.Minimum, thursday.Maximum)),
+            friday => Assert.Equal((602, 1806), (friday.Minimum, friday.Maximum)),
+            saturday => Assert.Equal((2400, 9600), (saturday.Minimum, saturday.Maximum)),
+            sunday => Assert.Equal((367, 1467), (sunday.Minimum, sunday.Maximum)));
     }
 
     public void Dispose()

@@ -21,6 +21,14 @@ public sealed class PricePredictionServiceTests
     }
 
     [Fact]
+    public void PredictionClampsEpsilonLikeTheWebTool()
+    {
+        var prices = service.Predict(Enumerable.Repeat<double?>(1, 7).ToArray(), PricePredictionService.Templates[0]);
+
+        Assert.Equal([5600, 7000, 7700, 9100, 10500, 11200, 11900], prices);
+    }
+
+    [Fact]
     public void OneWeekProducesSixtyFourPossibilities()
     {
         var week = service.Predict(Enumerable.Repeat<double?>(0.01, 7).ToArray(), PricePredictionService.Templates[2]);
@@ -71,5 +79,22 @@ public sealed class PricePredictionServiceTests
             item => !item.Eliminated);
         Assert.Equal(3, survivor.TargetTemplate.Id);
         Assert.Equal(2200, survivor.Prices[6]);
+    }
+
+    [Fact]
+    public void RepeatedCompleteWeeksKeepAllEpsilonCandidatesLikeTheWebTool()
+    {
+        int?[] repeated = [1800, 2268, 2600, 2029, 3357, 1289, 1507];
+
+        var result = service.AnalyzeSafe(
+        [
+            new WeekRecord("W1", repeated),
+            new WeekRecord("W2", repeated),
+        ]);
+
+        Assert.NotNull(result);
+        Assert.Equal(AnalysisStage.Pending, result.Stage);
+        Assert.Equal(8, result.CandidateCount);
+        Assert.Equal(8, result.CandidateForecasts?.Count);
     }
 }
