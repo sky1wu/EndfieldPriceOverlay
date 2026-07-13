@@ -142,6 +142,74 @@ public sealed class PredictionStatusServiceTests : IDisposable
             });
     }
 
+    [Fact]
+    public void RepeatedCompleteWeeksLockNewWeekFromMondayPrice()
+    {
+        var store = new CaptureStore(Path.Combine(directory, "new-week-lock.db"));
+        store.ApplyPriceChanges("悬空鼷兽骨雕货组",
+        [
+            new(new DateOnly(2026, 6, 28), 704),
+            new(new DateOnly(2026, 6, 29), 1800),
+            new(new DateOnly(2026, 6, 30), 2268),
+            new(new DateOnly(2026, 7, 1), 2600),
+            new(new DateOnly(2026, 7, 2), 2029),
+            new(new DateOnly(2026, 7, 3), 3357),
+            new(new DateOnly(2026, 7, 4), 1289),
+            new(new DateOnly(2026, 7, 5), 1507),
+            new(new DateOnly(2026, 7, 6), 1800),
+            new(new DateOnly(2026, 7, 7), 2268),
+            new(new DateOnly(2026, 7, 8), 2600),
+            new(new DateOnly(2026, 7, 9), 2029),
+            new(new DateOnly(2026, 7, 10), 3357),
+            new(new DateOnly(2026, 7, 11), 1289),
+            new(new DateOnly(2026, 7, 12), 1507),
+            new(new DateOnly(2026, 7, 13), 1800),
+        ]);
+        var service = new PredictionStatusService(store, new PricePredictionService());
+
+        var status = service.Get("悬空鼷兽骨雕货组", new DateOnly(2026, 7, 13));
+
+        Assert.Equal(PredictionState.Ready, status.State);
+        Assert.Equal(0, status.RequiredFutureDays);
+        Assert.Collection(
+            status.Future,
+            monday =>
+            {
+                Assert.Equal(new DateOnly(2026, 7, 13), monday.Date);
+                Assert.Equal(1800, monday.Price);
+            },
+            tuesday =>
+            {
+                Assert.Equal(new DateOnly(2026, 7, 14), tuesday.Date);
+                Assert.Equal(2268, tuesday.Price);
+            },
+            wednesday =>
+            {
+                Assert.Equal(new DateOnly(2026, 7, 15), wednesday.Date);
+                Assert.Equal(2600, wednesday.Price);
+            },
+            thursday =>
+            {
+                Assert.Equal(new DateOnly(2026, 7, 16), thursday.Date);
+                Assert.Equal(2029, thursday.Price);
+            },
+            friday =>
+            {
+                Assert.Equal(new DateOnly(2026, 7, 17), friday.Date);
+                Assert.Equal(3357, friday.Price);
+            },
+            saturday =>
+            {
+                Assert.Equal(new DateOnly(2026, 7, 18), saturday.Date);
+                Assert.Equal(1289, saturday.Price);
+            },
+            sunday =>
+            {
+                Assert.Equal(new DateOnly(2026, 7, 19), sunday.Date);
+                Assert.Equal(1507, sunday.Price);
+            });
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(directory))
