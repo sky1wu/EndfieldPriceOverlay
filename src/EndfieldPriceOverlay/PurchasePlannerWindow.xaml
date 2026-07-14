@@ -67,7 +67,7 @@
             <StackPanel>
                 <TextBlock Text="本周购买建议" FontSize="21" FontWeight="SemiBold" />
                 <TextBlock Margin="0,6,0,0" Foreground="#91A49A" FontSize="11"
-                           Text="先最大化购买件数，再按预测最低价安排日期与物资。" />
+                           Text="先最大化购买件数，再按确定价格与区间上限保守安排日期和物资。" />
             </StackPanel>
             <Border Grid.Column="1" Padding="10,6" VerticalAlignment="Top"
                     Background="#17221C" CornerRadius="2">

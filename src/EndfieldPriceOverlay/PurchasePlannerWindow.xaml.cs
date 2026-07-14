@@ -255,7 +255,9 @@ public partial class PurchasePlannerWindow : Window
             DateText = $"{source.Date:MM/dd} {WeekdayName(source.Date)}";
             QuantityText = $"买入 {source.Quantity}";
             ItemName = source.ItemName;
-            PriceText = source.Price.ToString(CultureInfo.InvariantCulture);
+            PriceText = source.IsRange
+                ? $"{source.Minimum}～{source.Maximum}"
+                : source.Price.ToString(CultureInfo.InvariantCulture);
             AvailableText = $"当日可买 {source.AvailableBeforePurchase}";
         }
 

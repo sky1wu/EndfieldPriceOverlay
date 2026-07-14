@@ -11,7 +11,16 @@ public sealed record DailyPurchaseOffer(
     string ItemName,
     DateOnly Date,
     int Weekday,
-    int Price);
+    int Price,
+    int? MinimumPrice = null,
+    int? MaximumPrice = null)
+{
+    public int Minimum => MinimumPrice ?? Price;
+
+    public int Maximum => MaximumPrice ?? Price;
+
+    public bool IsRange => Minimum != Maximum;
+}
 
 public sealed record PurchaseRecommendationLine(
     string Region,
@@ -20,7 +29,16 @@ public sealed record PurchaseRecommendationLine(
     string ItemName,
     int Price,
     int Quantity,
-    int AvailableBeforePurchase);
+    int AvailableBeforePurchase,
+    int? MinimumPrice = null,
+    int? MaximumPrice = null)
+{
+    public int Minimum => MinimumPrice ?? Price;
+
+    public int Maximum => MaximumPrice ?? Price;
+
+    public bool IsRange => Minimum != Maximum;
+}
 
 public sealed record RegionPurchaseRecommendation(
     string Region,
