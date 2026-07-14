@@ -90,6 +90,12 @@ public sealed partial class OcrService : IDisposable
                 .OrderByDescending(item => item.Block.CenterY)
                 .ThenByDescending(item => item.Block.Score)
                 .FirstOrDefault();
+            var price = priceCandidate.Price;
+            if (price is >= 1300 and < 2000)
+            {
+                price = CorrectMarketPrice(price.Value, priceCandidate.Block.FirstScore);
+            }
+
             using var nameCrop = Crop(bitmap, MarketOverviewLayout.NameSlot(index, rowBottoms[row]));
             var nameBlocks = Detect(nameCrop)
                 .Where(block => HasChinese().IsMatch(block.Text))
@@ -99,9 +105,9 @@ public sealed partial class OcrService : IDisposable
             var itemName = string.Concat(nameBlocks.Select(block => block.Text));
             slots[index] = new MarketOverviewSlot(
                 string.IsNullOrWhiteSpace(itemName) ? null : itemName,
-                priceCandidate.Price,
+                price,
                 nameBlocks.Length == 0 ? null : nameBlocks.Average(block => block.Score),
-                priceCandidate.Price is null ? null : priceCandidate.Block.Score);
+                price is null ? null : priceCandidate.Block.Score);
         }
 
         var detectedCount = slots.Count(slot => slot?.Price is not null);
@@ -163,7 +169,12 @@ public sealed partial class OcrService : IDisposable
             var score = block.CharScores is { Length: > 0 }
                 ? block.CharScores.Average(value => (double)value)
                 : 0;
-            return new RecognizedBlock(block.Text.Trim(), score, centerX, centerY);
+            return new RecognizedBlock(
+                block.Text.Trim(),
+                score,
+                centerX,
+                centerY,
+                block.CharScores is { Length: > 0 } ? block.CharScores[0] : 0);
         }).ToArray();
     }
 
@@ -180,6 +191,24 @@ public sealed partial class OcrService : IDisposable
             .LastOrDefault(value => value is >= 300 and <= 5500) is { } value and > 0
                 ? value
                 : null;
+    }
+
+    internal static int CorrectMarketPrice(int price, double firstCharacterScore)
+    {
+        if (firstCharacterScore >= 0.9)
+        {
+            return price;
+        }
+
+        var digits = price.ToString(CultureInfo.InvariantCulture);
+        if (digits.Length != 4 || digits[0] != '1'
+            || !int.TryParse(digits[1..], CultureInfo.InvariantCulture, out var withoutIcon)
+            || withoutIcon < 300)
+        {
+            return price;
+        }
+
+        return withoutIcon;
     }
 
     private static string? DetectRegion(string text)
@@ -224,7 +253,12 @@ public sealed partial class OcrService : IDisposable
         return SKBitmap.Decode(stream) ?? throw new InvalidOperationException("无法转换游戏截图。");
     }
 
-    private sealed record RecognizedBlock(string Text, double Score, double CenterX, double CenterY);
+    private sealed record RecognizedBlock(
+        string Text,
+        double Score,
+        double CenterX,
+        double CenterY,
+        double FirstScore);
 
     [GeneratedRegex(@"[\u4e00-\u9fff]")]
     private static partial Regex HasChinese();
