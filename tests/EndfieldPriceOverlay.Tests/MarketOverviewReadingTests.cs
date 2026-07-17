@@ -37,6 +37,8 @@ public sealed class MarketOverviewReadingTests
             "天师龙泡泡货组",
             "武陵冻梨货组",
             "清波筏货组",
+            "息壤桥梁货组",
+            "选剑铸炉货组",
         ], reading.ItemNamesInGameOrder(ItemRegionCatalog.Wuling));
     }
 

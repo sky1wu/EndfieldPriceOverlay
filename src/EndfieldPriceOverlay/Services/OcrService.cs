@@ -84,16 +84,11 @@ public sealed partial class OcrService : IDisposable
         {
             var row = index / MarketOverviewLayout.ColumnCount;
             using var priceCrop = Crop(bitmap, MarketOverviewLayout.PriceSlot(index, rowBottoms[row]));
-            var priceCandidate = Detect(priceCrop)
-                .Select(block => (Block: block, Price: ParsePrice(block.Text)))
-                .Where(item => item.Price is not null)
-                .OrderByDescending(item => item.Block.CenterY)
-                .ThenByDescending(item => item.Block.Score)
-                .FirstOrDefault();
+            var priceCandidate = DetectMarketPrice(priceCrop);
             var price = priceCandidate.Price;
             if (price is >= 1300 and < 2000)
             {
-                price = CorrectMarketPrice(price.Value, priceCandidate.Block.FirstScore);
+                price = CorrectMarketPrice(price.Value, priceCandidate.FirstCharacterScore ?? 1);
             }
 
             using var nameCrop = Crop(bitmap, MarketOverviewLayout.NameSlot(index, rowBottoms[row]));
@@ -107,7 +102,7 @@ public sealed partial class OcrService : IDisposable
                 string.IsNullOrWhiteSpace(itemName) ? null : itemName,
                 price,
                 nameBlocks.Length == 0 ? null : nameBlocks.Average(block => block.Score),
-                price is null ? null : priceCandidate.Block.Score);
+                price is null ? null : priceCandidate.Score);
         }
 
         var detectedCount = slots.Count(slot => slot?.Price is not null);
@@ -176,6 +171,31 @@ public sealed partial class OcrService : IDisposable
                 centerY,
                 block.CharScores is { Length: > 0 } ? block.CharScores[0] : 0);
         }).ToArray();
+    }
+
+    private RecognizedPrice DetectMarketPrice(SKBitmap crop)
+    {
+        var candidate = SelectPriceCandidate(crop);
+        if (candidate.Price is not null)
+        {
+            return candidate;
+        }
+
+        using var focusedCrop = Crop(crop, new NormalizedRect(0.18, 0, 0.78, 1));
+        return SelectPriceCandidate(focusedCrop);
+    }
+
+    private RecognizedPrice SelectPriceCandidate(SKBitmap crop)
+    {
+        var candidate = Detect(crop)
+            .Select(block => (Block: block, Price: ParsePrice(block.Text)))
+            .Where(item => item.Price is not null)
+            .OrderByDescending(item => item.Block.CenterY)
+            .ThenByDescending(item => item.Block.Score)
+            .FirstOrDefault();
+        return candidate.Price is null
+            ? new RecognizedPrice(null, null, null)
+            : new RecognizedPrice(candidate.Price, candidate.Block.Score, candidate.Block.FirstScore);
     }
 
     private static int? ParsePrice(string text)
@@ -259,6 +279,11 @@ public sealed partial class OcrService : IDisposable
         double CenterX,
         double CenterY,
         double FirstScore);
+
+    private sealed record RecognizedPrice(
+        int? Price,
+        double? Score,
+        double? FirstCharacterScore);
 
     [GeneratedRegex(@"[\u4e00-\u9fff]")]
     private static partial Regex HasChinese();

@@ -32,6 +32,8 @@ public sealed class ItemRegionCatalogTests
     [InlineData("清波筏货组")]
     [InlineData("武陵冻梨货组")]
     [InlineData("武侠电影货组")]
+    [InlineData("息壤桥梁货组")]
+    [InlineData("选剑铸炉货组")]
     public void ClassifiesWulingItems(string name)
     {
         Assert.Equal(ItemRegionCatalog.Wuling, ItemRegionCatalog.TryClassify(name));
@@ -71,10 +73,14 @@ public sealed class ItemRegionCatalogTests
         Assert.Equal("锚点厨具货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.ValleyIv)[0]);
         Assert.Equal("硬脑壳头盔货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.ValleyIv)[11]);
         Assert.Equal(11, ItemRegionCatalog.ItemSortOrder(ItemRegionCatalog.ValleyIv, "硬脑壳头盔货组"));
-        Assert.Equal(9, ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count);
+        Assert.Equal(11, ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count);
         Assert.Equal("天师龙泡泡货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[0]);
         Assert.Equal("武侠电影货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[8]);
+        Assert.Equal("息壤桥梁货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[9]);
+        Assert.Equal("选剑铸炉货组", ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling)[10]);
         Assert.Equal("Assets/Items/valley-01.png", ItemRegionCatalog.IconPath("锚点厨具货组"));
         Assert.Equal("Assets/Items/wuling-09.png", ItemRegionCatalog.IconPath("武侠电影货组"));
+        Assert.Equal("Assets/Items/wuling-10.png", ItemRegionCatalog.IconPath("息壤桥梁货组"));
+        Assert.Equal("Assets/Items/wuling-11.png", ItemRegionCatalog.IconPath("选剑铸炉货组"));
     }
 }

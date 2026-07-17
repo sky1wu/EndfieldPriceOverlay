@@ -111,7 +111,7 @@ public sealed class PurchaseRecommendationServiceTests : IDisposable
         Assert.Equal("息壤净水芯货组", today.ItemName);
         Assert.Equal(486, today.Price);
         Assert.Equal(170, today.Quantity);
-        Assert.Contains("1/9 个确定预测物资", region.Message);
+        Assert.Contains("1/11 个确定预测物资", region.Message);
     }
 
     [Fact]
