@@ -19,4 +19,19 @@ public sealed class OcrServiceTests
     {
         Assert.Equal(expected, OcrService.CorrectMarketPrice(recognized, firstCharacterScore));
     }
+
+    [Theory]
+    [InlineData("：剩余可购买数量400/400 18小时后+200△即将溢出", 400, 400, 200)]
+    [InlineData("剩余可购买数量32O／96O 23小时后＋32O", 320, 960, 320)]
+    [InlineData("剩余可购买数量 170 / 340 6小时后 + 170", 170, 340, 170)]
+    public void ParsesPurchaseQuota(string text, int current, int limit, int dailyRecovery)
+    {
+        var reading = OcrService.ParsePurchaseQuota(text, 0.95);
+
+        Assert.Equal(current, reading.Current);
+        Assert.Equal(limit, reading.Limit);
+        Assert.Equal(dailyRecovery, reading.DailyRecovery);
+        Assert.Equal(0.95, reading.Confidence);
+        Assert.True(reading.IsComplete);
+    }
 }

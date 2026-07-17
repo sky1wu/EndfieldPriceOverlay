@@ -43,4 +43,15 @@ public sealed class LayoutConfigServiceTests
         Assert.True(firstName.Top > 0.545);
         Assert.True(firstName.Bottom > firstName.Top);
     }
+
+    [Fact]
+    public void PurchaseQuotaCropCoversOverviewStatusBar()
+    {
+        var area = MarketOverviewLayout.PurchaseQuota;
+
+        Assert.Equal(0.040, area.Left, 3);
+        Assert.Equal(0.185, area.Top, 3);
+        Assert.True(area.Right > 0.7);
+        Assert.True(area.Bottom < 0.25);
+    }
 }

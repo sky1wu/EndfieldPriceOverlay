@@ -58,6 +58,23 @@ public sealed class PurchaseSettingsService
             JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
     }
 
+    public void SaveRegion(RegionPurchaseSettings setting)
+    {
+        if (!ItemRegionCatalog.IsKnownRegion(setting.Region)
+            || setting.Current < 0
+            || setting.Limit < 0
+            || setting.DailyRecovery < 0
+            || setting.Current > setting.Limit)
+        {
+            throw new ArgumentOutOfRangeException(nameof(setting), "购买额度设置无效。");
+        }
+
+        var settings = Load()
+            .Select(saved => saved.Region == setting.Region ? setting : saved)
+            .ToArray();
+        Save(settings);
+    }
+
     private static IReadOnlyList<RegionPurchaseSettings> DefaultSettings() =>
     [
         new(ItemRegionCatalog.ValleyIv, Current: 0, Limit: 960, DailyRecovery: 320),

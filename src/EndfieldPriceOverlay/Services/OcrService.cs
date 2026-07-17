@@ -74,6 +74,13 @@ public sealed partial class OcrService : IDisposable
         using var headerCrop = Crop(bitmap, MarketOverviewLayout.Header);
         var headerText = string.Concat(Detect(headerCrop).Select(block => block.Text));
         var region = DetectRegion(headerText);
+        using var purchaseQuotaCrop = Crop(bitmap, MarketOverviewLayout.PurchaseQuota);
+        var purchaseQuotaBlocks = Detect(purchaseQuotaCrop)
+            .OrderBy(block => block.CenterX)
+            .ToArray();
+        var purchaseQuota = ParsePurchaseQuota(
+            string.Join(' ', purchaseQuotaBlocks.Select(block => block.Text)),
+            purchaseQuotaBlocks.Length == 0 ? null : purchaseQuotaBlocks.Average(block => block.Score));
         var slots = new MarketOverviewSlot[MarketOverviewLayout.SlotCount];
         var rowBottoms = MarketOverviewLocator.LocateRowBottoms(bitmap);
         var slotsToRead = region == ItemRegionCatalog.Wuling
@@ -117,7 +124,10 @@ public sealed partial class OcrService : IDisposable
         return new MarketOverviewReading(
             region,
             slots.Select(slot => slot ?? new MarketOverviewSlot(null, null, null, null)).ToArray(),
-            DateTime.Now);
+            DateTime.Now)
+        {
+            PurchaseQuota = purchaseQuota,
+        };
     }
 
     public void Dispose()
@@ -213,6 +223,29 @@ public sealed partial class OcrService : IDisposable
                 : null;
     }
 
+    internal static PurchaseQuotaReading ParsePurchaseQuota(string text, double? confidence = null)
+    {
+        var normalized = text
+            .Replace('O', '0')
+            .Replace('o', '0')
+            .Replace('I', '1')
+            .Replace('l', '1')
+            .Replace('／', '/')
+            .Replace('＋', '+');
+        var capacity = PurchaseCapacity().Match(normalized);
+        var recovery = DailyRecovery().Match(normalized);
+        return new PurchaseQuotaReading(
+            ParseNumber(capacity.Groups["current"].Value),
+            ParseNumber(capacity.Groups["limit"].Value),
+            ParseNumber(recovery.Groups["recovery"].Value),
+            confidence);
+    }
+
+    private static int? ParseNumber(string value) =>
+        int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
+            ? number
+            : null;
+
     internal static int CorrectMarketPrice(int price, double firstCharacterScore)
     {
         if (firstCharacterScore >= 0.9)
@@ -293,4 +326,10 @@ public sealed partial class OcrService : IDisposable
 
     [GeneratedRegex(@"\d{3,4}")]
     private static partial Regex PriceNumber();
+
+    [GeneratedRegex(@"(?<current>\d{1,5})\s*/\s*(?<limit>\d{1,5})")]
+    private static partial Regex PurchaseCapacity();
+
+    [GeneratedRegex(@"(?:小时后\D{0,6}|\+)(?<recovery>\d{1,5})")]
+    private static partial Regex DailyRecovery();
 }

@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private readonly CaptureStore store = new();
     private readonly PricePredictionService prediction = new();
     private readonly LayoutConfigService layoutConfig = new();
+    private readonly PurchaseSettingsService purchaseSettings = new();
     private readonly WindowCaptureService capture = new();
     private readonly Dictionary<string, bool> regionExpansion = new(StringComparer.Ordinal);
     private readonly OcrService ocr;
@@ -110,15 +111,20 @@ public partial class MainWindow : Window
             var frame = await CaptureWithoutOverlayAsync();
             var reading = await Task.Run(() => ocr.RecognizeMarketOverview(frame.Image));
             var dialog = new BatchConfirmationWindow(reading) { Owner = this };
-            if (dialog.ShowDialog() != true || dialog.Readings is null)
+            if (dialog.ShowDialog() != true || dialog.Readings is null || dialog.PurchaseSettings is null)
             {
                 StatusText.Text = "已取消，本次批量识别未写入数据";
                 return;
             }
 
-            var count = await Task.Run(() => store.SaveDailyPrices(dialog.Readings));
+            var count = await Task.Run(() =>
+            {
+                var saved = store.SaveDailyPrices(dialog.Readings);
+                purchaseSettings.SaveRegion(dialog.PurchaseSettings);
+                return saved;
+            });
             RefreshItems(dialog.Readings[0].ItemName);
-            StatusText.Text = $"已记录 {dialog.Readings[0].Region} {count} 项物资的今日价格";
+            StatusText.Text = $"已记录 {dialog.Readings[0].Region} {count} 项今日价格与购买额度";
         }
         catch (Exception exception)
         {

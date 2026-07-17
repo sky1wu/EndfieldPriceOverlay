@@ -69,6 +69,15 @@ public sealed record DailyPriceReading(
 
 public sealed record PriceRecordChange(DateOnly Date, int? Price);
 
+public sealed record PurchaseQuotaReading(
+    int? Current,
+    int? Limit,
+    int? DailyRecovery,
+    double? Confidence)
+{
+    public bool IsComplete => Current is not null && Limit is not null && DailyRecovery is not null;
+}
+
 public sealed record MarketOverviewSlot(
     string? ItemName,
     int? Price,
@@ -80,6 +89,8 @@ public sealed record MarketOverviewReading(
     IReadOnlyList<MarketOverviewSlot> Slots,
     DateTime CapturedAt)
 {
+    public PurchaseQuotaReading? PurchaseQuota { get; init; }
+
     public IReadOnlyDictionary<string, MarketOverviewSlot> MatchItems(string region) => Slots
         .Select(slot => new
         {

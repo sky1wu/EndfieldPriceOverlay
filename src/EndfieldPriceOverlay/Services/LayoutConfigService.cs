@@ -35,6 +35,8 @@ public static class MarketOverviewLayout
 
     public static NormalizedRect Header { get; } = new(0.015, 0.010, 0.500, 0.185);
 
+    public static NormalizedRect PurchaseQuota { get; } = new(0.040, 0.185, 0.760, 0.235);
+
     public static NormalizedRect PriceSlot(int index, double rowBottom)
     {
         if (index is < 0 or >= SlotCount)

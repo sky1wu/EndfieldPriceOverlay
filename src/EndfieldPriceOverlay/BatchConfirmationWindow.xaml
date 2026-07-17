@@ -49,6 +49,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -84,7 +85,36 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="2" Margin="0,0,0,6">
+        <Border Grid.Row="2" Margin="0,0,0,16" Padding="12,9"
+                Background="#0D1511" BorderBrush="#29382F" BorderThickness="0,1,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="80" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="购买额度" Foreground="#E2EBE6" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Margin="6,0">
+                    <TextBlock Text="当前可买" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                    <TextBox x:Name="CurrentQuotaBox" Margin="0,4,0,0" TextAlignment="Center" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="6,0">
+                    <TextBlock Text="容量上限" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                    <TextBox x:Name="QuotaLimitBox" Margin="0,4,0,0" TextAlignment="Center" />
+                </StackPanel>
+                <StackPanel Grid.Column="3" Margin="6,0">
+                    <TextBlock Text="每日恢复" Foreground="#65786E" FontSize="9" HorizontalAlignment="Center" />
+                    <TextBox x:Name="DailyRecoveryBox" Margin="0,4,0,0" TextAlignment="Center" />
+                </StackPanel>
+                <TextBlock x:Name="QuotaReviewText" Grid.Column="4" Foreground="#D5A836" FontSize="10"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,0,0,6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="44" />
                 <ColumnDefinition Width="*" />
@@ -97,9 +127,9 @@
             <TextBlock Grid.Column="3" Text="OCR" Foreground="#65786E" FontSize="10" HorizontalAlignment="Center" />
         </Grid>
 
-        <Border Grid.Row="3" Height="1" Background="#2B3831" />
+        <Border Grid.Row="4" Height="1" Background="#2B3831" />
 
-        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" Margin="0,4,0,12">
+        <ScrollViewer Grid.Row="5" VerticalScrollBarVisibility="Auto" Margin="0,4,0,12">
             <ItemsControl x:Name="PriceFields">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -125,7 +155,7 @@
             </ItemsControl>
         </ScrollViewer>
 
-        <Grid Grid.Row="5">
+        <Grid Grid.Row="6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

@@ -17,6 +17,14 @@ public partial class BatchConfirmationWindow : Window
         source = reading;
         InitializeComponent();
         GameDateText.Text = GameCalendar.DateAt(reading.CapturedAt).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        CurrentQuotaBox.Text = reading.PurchaseQuota?.Current?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        QuotaLimitBox.Text = reading.PurchaseQuota?.Limit?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        DailyRecoveryBox.Text = reading.PurchaseQuota?.DailyRecovery?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        QuotaReviewText.Text = reading.PurchaseQuota?.IsComplete != true
+            ? "未识别"
+            : reading.PurchaseQuota.Confidence is < 0.55
+                ? "请核对"
+                : "已识别";
         if (reading.Region == ItemRegionCatalog.Wuling)
         {
             WulingOption.IsChecked = true;
@@ -28,6 +36,8 @@ public partial class BatchConfirmationWindow : Window
     }
 
     public IReadOnlyList<DailyPriceReading>? Readings { get; private set; }
+
+    public RegionPurchaseSettings? PurchaseSettings { get; private set; }
 
     private void Region_Checked(object sender, RoutedEventArgs e)
     {
@@ -64,6 +74,20 @@ public partial class BatchConfirmationWindow : Window
             return;
         }
 
+        if (!TryParseQuota(CurrentQuotaBox.Text, out var current)
+            || !TryParseQuota(QuotaLimitBox.Text, out var limit)
+            || !TryParseQuota(DailyRecoveryBox.Text, out var dailyRecovery))
+        {
+            MessageBox.Show(this, "当前可买、容量上限和每日恢复必须是非负整数。", "无法记录");
+            return;
+        }
+
+        if (current > limit)
+        {
+            MessageBox.Show(this, "当前可买不能超过容量上限。", "无法记录");
+            return;
+        }
+
         var readings = new List<DailyPriceReading>(fields.Length);
         foreach (var field in fields)
         {
@@ -78,10 +102,15 @@ public partial class BatchConfirmationWindow : Window
         }
 
         Readings = readings;
+        PurchaseSettings = new RegionPurchaseSettings(selectedRegion, current, limit, dailyRecovery);
         DialogResult = true;
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
+
+    private static bool TryParseQuota(string value, out int number) =>
+        int.TryParse(value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out number)
+        && number >= 0;
 
     private sealed class BatchPriceField : INotifyPropertyChanged
     {

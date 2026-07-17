@@ -38,6 +38,22 @@ public sealed class PurchaseSettingsServiceTests : IDisposable
         Assert.Equal(saved[1], loaded[ItemRegionCatalog.Wuling]);
     }
 
+    [Fact]
+    public void UpdatesRecognizedRegionAndPreservesOtherRegion()
+    {
+        var service = new PurchaseSettingsService(Path.Combine(directory, "purchase-settings.json"));
+
+        service.SaveRegion(new RegionPurchaseSettings(
+            ItemRegionCatalog.Wuling,
+            Current: 400,
+            Limit: 400,
+            DailyRecovery: 200));
+        var loaded = service.Load().ToDictionary(setting => setting.Region);
+
+        Assert.Equal(new RegionPurchaseSettings(ItemRegionCatalog.Wuling, 400, 400, 200), loaded[ItemRegionCatalog.Wuling]);
+        Assert.Equal(new RegionPurchaseSettings(ItemRegionCatalog.ValleyIv, 0, 960, 320), loaded[ItemRegionCatalog.ValleyIv]);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(directory))
