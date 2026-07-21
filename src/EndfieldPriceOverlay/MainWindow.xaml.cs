@@ -117,14 +117,21 @@ public partial class MainWindow : Window
                 return;
             }
 
+            var readings = dialog.Readings;
+            var settings = dialog.PurchaseSettings;
             var count = await Task.Run(() =>
             {
-                var saved = store.SaveDailyPrices(dialog.Readings);
-                purchaseSettings.SaveRegion(dialog.PurchaseSettings);
+                var saved = store.SaveDailyPrices(readings);
+                purchaseSettings.SaveRegion(settings);
                 return saved;
             });
-            RefreshItems(dialog.Readings[0].ItemName);
-            StatusText.Text = $"已记录 {dialog.Readings[0].Region} {count} 项今日价格与购买额度";
+            RefreshItems(readings[0].ItemName);
+            var planner = new PurchasePlannerWindow(store, predictionStatus, settings.Region)
+            {
+                Owner = this,
+            };
+            StatusText.Text = $"已记录 {settings.Region} {count} 项今日价格，并生成购买建议";
+            planner.ShowDialog();
         }
         catch (Exception exception)
         {
@@ -241,7 +248,7 @@ public partial class MainWindow : Window
         RecognizeButton.IsEnabled = true;
         BatchRecognizeButton.IsEnabled = true;
         RecognizeButton.Content = "识别当前物资";
-        BatchRecognizeButton.Content = "批量识别今日价格";
+        BatchRecognizeButton.Content = "识别今日价格并查看建议";
         StatusDot.BeginAnimation(OpacityProperty, null);
         StatusDot.Opacity = 1;
     }

@@ -646,7 +646,7 @@
                             <Button x:Name="BatchRecognizeButton" Style="{StaticResource AppAccentButton}"
                                 Width="176" Height="46" Padding="14,0" Margin="0,0,10,0"
                                 FontSize="13" FontWeight="SemiBold"
-                                Content="批量识别今日价格" Click="BatchRecognize_Click" />
+                                Content="识别今日价格并查看建议" Click="BatchRecognize_Click" />
                             <Button x:Name="RecognizeButton"
                                 Width="140" Height="46" Padding="14,0" Margin="0"
                                 FontSize="13" FontWeight="SemiBold"

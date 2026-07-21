@@ -14,10 +14,12 @@ public partial class PurchasePlannerWindow : Window
     private readonly PurchaseSettingsService settingsService = new();
     private readonly PurchaseRecommendationService recommendation;
     private readonly PurchaseRegionField[] fields;
+    private readonly string? focusedRegion;
 
-    public PurchasePlannerWindow(CaptureStore store, PredictionStatusService predictionStatus)
+    public PurchasePlannerWindow(CaptureStore store, PredictionStatusService predictionStatus, string? focusedRegion = null)
     {
         InitializeComponent();
+        this.focusedRegion = focusedRegion;
         recommendation = new PurchaseRecommendationService(store, predictionStatus);
         var savedSettings = settingsService.Load().ToDictionary(setting => setting.Region, StringComparer.Ordinal);
         fields = ItemRegionCatalog.KnownRegions
@@ -30,12 +32,18 @@ public partial class PurchasePlannerWindow : Window
         {
             AnimateSection(SettingsSection, 0);
             AnimateSection(ResultsSection, 70);
+            if (this.focusedRegion is not null)
+            {
+                GenerateAdvice(showError: true);
+            }
         };
     }
 
-    private void Generate_Click(object sender, RoutedEventArgs e)
+    private void Generate_Click(object sender, RoutedEventArgs e) => GenerateAdvice(showError: true);
+
+    private void GenerateAdvice(bool showError)
     {
-        if (!TryBuildSettings(showError: true, out var settings))
+        if (!TryBuildSettings(showError, out var settings))
         {
             return;
         }
@@ -44,6 +52,7 @@ public partial class PurchasePlannerWindow : Window
         {
             settingsService.Save(settings);
             var result = recommendation.Build(settings)
+                .Where(item => focusedRegion is null || item.Region == focusedRegion)
                 .Select(item => new RegionAdviceView(item))
                 .ToArray();
             AdviceGroups.ItemsSource = result;
@@ -59,7 +68,10 @@ public partial class PurchasePlannerWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show(this, exception.Message, "无法生成购买建议", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (showError)
+            {
+                MessageBox.Show(this, exception.Message, "无法生成购买建议", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
     }
 
