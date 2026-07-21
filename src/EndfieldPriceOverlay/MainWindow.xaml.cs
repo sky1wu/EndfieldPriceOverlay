@@ -45,6 +45,9 @@ public partial class MainWindow : Window
     private void RefreshItems(string? selectName = null)
     {
         var customOrders = store.GetItemSortOrders();
+        var today = GameCalendar.DateAt(DateTime.Now);
+        var weekStart = today.AddDays(-((int)today.DayOfWeek + 6) % 7);
+        var weekEnd = weekStart.AddDays(6);
         var rows = store.GetItemSummaries()
             .Where(item => ItemRegionCatalog.IsKnownRegion(item.Region))
             .Select(item => new ItemRow(
@@ -52,7 +55,10 @@ public partial class MainWindow : Window
                 ItemRegionCatalog.IconPath(item.Name),
                 item.Region!,
                 $"{item.LatestDate:MM/dd} · {item.LatestPrice} · {item.RecordedDays} 天",
-                item.Trend.Select(pair => pair.Value).ToArray(),
+                item.Trend
+                    .Where(pair => pair.Key >= weekStart && pair.Key <= weekEnd)
+                    .Select(pair => pair.Value)
+                    .ToArray(),
                 item.Trend.TakeLast(7).Select(pair => new TrendDatum(pair.Key, pair.Value)).ToArray(),
                 item))
             .OrderBy(row => ItemRegionCatalog.SortOrder(row.Region))
