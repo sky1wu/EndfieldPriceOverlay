@@ -39,6 +39,7 @@ public sealed class MarketOverviewReadingTests
             "清波筏货组",
             "息壤桥梁货组",
             "选剑铸炉货组",
+            "界石锁货组",
         ], reading.ItemNamesInGameOrder(ItemRegionCatalog.Wuling));
     }
 

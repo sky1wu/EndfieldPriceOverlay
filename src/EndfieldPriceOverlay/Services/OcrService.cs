@@ -118,9 +118,7 @@ public sealed partial class OcrService : IDisposable
             throw new InvalidOperationException("未识别到物资总览。请打开弹性需求物资的地区调度页面，并确保价格卡片完整可见。");
         }
 
-        region ??= slots.Skip(ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count).Any(slot => slot?.Price is not null)
-            ? ItemRegionCatalog.ValleyIv
-            : ItemRegionCatalog.Wuling;
+        region ??= DetectRegion(slots);
         return new MarketOverviewReading(
             region,
             slots.Select(slot => slot ?? new MarketOverviewSlot(null, null, null, null)).ToArray(),
@@ -276,6 +274,21 @@ public sealed partial class OcrService : IDisposable
 
         return normalized.Contains(ItemRegionCatalog.Wuling, StringComparison.Ordinal)
             ? ItemRegionCatalog.Wuling
+            : null;
+    }
+
+    private static string? DetectRegion(IEnumerable<MarketOverviewSlot?> slots)
+    {
+        var matches = ItemRegionCatalog.KnownRegions
+            .Select(region => new
+            {
+                Region = region,
+                Count = slots.Count(slot => ItemRegionCatalog.MatchItemName(region, slot?.ItemName) is not null),
+            })
+            .OrderByDescending(match => match.Count)
+            .ToArray();
+        return matches[0].Count > matches[1].Count
+            ? matches[0].Region
             : null;
     }
 
