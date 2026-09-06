@@ -4,7 +4,12 @@ namespace EndfieldPriceOverlay.Services;
 
 public sealed class PricePredictionService
 {
-    public const double MatchThreshold = 0.003;
+    // A rounded source price can amplify by less than 4.37x between the supplied
+    // weekday templates: 0.5 * 4.37 + 0.5 < 3 price units. Never widen this gate
+    // just because every available candidate fits badly.
+    public const int RoundingTolerance = 3;
+    public const int MinimumPrice = 300;
+    public const int MaximumPrice = 5500;
 
     public static IReadOnlyList<PriceTemplate> Templates { get; } =
     [
@@ -78,210 +83,180 @@ public sealed class PricePredictionService
 
     public IReadOnlyList<PricePrediction> FilterPredictions(
         IEnumerable<PricePrediction> predictions,
-        IReadOnlyList<int?> weekPrices)
-    {
-        var scored = predictions
-            .Select(item => item with { Residual = MatchResidual(item.Prices, weekPrices) })
-            .OrderBy(item => item.Residual)
-            .ToArray();
-        if (scored.Length == 0)
-        {
-            return [];
-        }
-
-        var threshold = Math.Max(scored[0].Residual * 5, MatchThreshold);
-        var filtered = scored.Where(item => item.Residual <= threshold).ToArray();
-        return filtered.Length > 0 ? filtered : [scored[0]];
-    }
+        IReadOnlyList<int?> weekPrices) => FilterCurrentWeek(predictions, weekPrices)
+        .Where(item => !item.Eliminated).ToArray();
 
     public IReadOnlyList<PricePrediction> FilterCurrentWeek(
         IEnumerable<PricePrediction> predictions,
         IReadOnlyList<int?> currentWeek)
     {
-        var source = predictions.ToArray();
-        if (currentWeek.All(price => price is null))
+        ValidateWeek(currentWeek);
+        var hasPrices = currentWeek.Any(price => price is not null);
+        return predictions.Select(item =>
         {
-            return source.Select(item => item with
+            if (!hasPrices)
             {
-                Eliminated = false,
-                Residual = double.PositiveInfinity,
-                Confidence = null,
-            }).ToArray();
-        }
+                return item with { Eliminated = false, Residual = double.PositiveInfinity, Confidence = null };
+            }
 
-        var scored = source
-            .Select(item => item with { Residual = MatchResidual(item.Prices, currentWeek) })
-            .OrderBy(item => item.Residual)
-            .ToArray();
-        var minimum = scored[0].Residual;
-        var threshold = Math.Max(minimum * 5, MatchThreshold);
-        return scored.Select(item => item with
-        {
-            Eliminated = item.Residual > threshold,
-            Confidence = minimum < 1e-9 ? 1 : Math.Min(1, minimum / item.Residual),
-        }).ToArray();
+            var distances = Enumerable.Range(0, 7).Where(i => currentWeek[i] is not null)
+                .Select(i => DistanceFromRange(currentWeek[i]!.Value, item.MinimumAt(i), item.MaximumAt(i)))
+                .ToArray();
+            var rejected = distances.Any(distance => distance > RoundingTolerance);
+            // A fit score, not a probability; an exact rival never gives every
+            // other candidate a score of one.
+            var fit = 1 / (1 + distances.Average(distance => (double)distance * distance));
+            return item with
+            {
+                Residual = MatchResidual(item.Prices, currentWeek),
+                Eliminated = rejected,
+                Confidence = rejected ? 0 : fit,
+            };
+        }).OrderBy(item => item.Residual).ToArray();
     }
 
-    public AnalysisResult? AnalyzeSafe(IReadOnlyList<WeekRecord> records)
-    {
-        if (records.Count == 0)
-        {
-            return null;
-        }
-
-        var complete = records.Where(record => record.Prices.All(price => price is not null)).ToArray();
-        var nearComplete = records.Where(record =>
-        {
-            var missing = record.Prices.Count(price => price is null);
-            return missing is >= 1 and <= 2;
-        }).ToArray();
-
-        if (complete.Length == 0 && nearComplete.Length == 0)
-        {
-            var result = Analyze(records);
-            return result?.Stage == AnalysisStage.Locked
-                ? result with { Stage = AnalysisStage.Pending }
-                : result;
-        }
-
-        if (complete.Length == records.Count)
-        {
-            return Analyze(records);
-        }
-
-        var fitRecords = complete.Length > 0 ? complete : nearComplete;
-        var fitResult = Analyze(fitRecords);
-        var fullResult = Analyze(records);
-        AnalysisResult? final;
-        if (fullResult is null || fullResult.Stage == AnalysisStage.FirstWeek)
-        {
-            final = fitResult ?? Analyze(records);
-        }
-        else if (fitResult is null || fitResult.Stage == AnalysisStage.FirstWeek)
-        {
-            final = fullResult;
-        }
-        else
-        {
-            final = fullResult.CandidateCount <= fitResult.CandidateCount ? fullResult : fitResult;
-        }
-
-        return complete.Length == 0 && final?.Stage == AnalysisStage.Locked
-            ? final with { Stage = AnalysisStage.Pending }
-            : final;
-    }
+    public AnalysisResult? AnalyzeSafe(IReadOnlyList<WeekRecord> records) => Analyze(records);
 
     public AnalysisResult? Analyze(IReadOnlyList<WeekRecord> records)
     {
-        if (records.Count == 0)
-        {
-            return null;
-        }
+        if (records.Count == 0) return null;
+        foreach (var record in records) ValidateWeek(record.Prices);
+        if (records.Count == 1) return FirstWeek(records[0]);
 
-        foreach (var record in records)
-        {
-            ValidateWeek(record.Prices);
-        }
+        // Partial current-week observations can eliminate hypotheses, but must
+        // not be copied into their own predictions or used as historical proof.
+        var current = records[^1].Prices.Any(price => price is null) ? records[^1] : null;
+        var history = records.Where(record => !ReferenceEquals(record, current)
+                && record.Prices.Count(price => price is not null) >= 5)
+            .DistinctBy(record => string.Join(',', record.Prices)).ToArray();
+        var complete = history.Where(record => record.Prices.All(price => price is not null)).ToArray();
+        if (complete.Length == 0) return FirstWeek(records[^1]);
 
-        if (records.Count == 1)
+        // A hypothesis identifies a template for EACH distinct historical week.
+        // Source template IDs from unrelated weeks are never intersected.
+        var hypotheses = new Dictionary<string, CandidateForecast>();
+        foreach (var anchor in complete)
+        foreach (var source in Templates)
         {
-            return FirstWeek(records[0]);
-        }
-
-        var completeWeeks = records.Where(record => record.Prices.All(price => price is not null)).ToArray();
-        return AnalyzeConsecutiveWeeks(records, completeWeeks);
-    }
-
-    private AnalysisResult AnalyzeConsecutiveWeeks(
-        IReadOnlyList<WeekRecord> records,
-        IReadOnlyList<WeekRecord> completeWeeks)
-    {
-        Dictionary<int, PricePrediction>? candidateSet = null;
-        for (var index = 0; index < records.Count - 1; index++)
-        {
-            var predictions = EnumerateAllPredictions(EnumerateEpsilonCandidates(records[index].Prices));
-            var matched = FilterPredictions(predictions, records[index + 1].Prices);
-            if (matched.Count == 0)
+            var seed = ComputeEpsilon(anchor.Prices, source);
+            var assigned = new List<(WeekRecord Week, PriceTemplate Template)>();
+            foreach (var week in history)
             {
-                continue;
+                var match = Templates.Select(target =>
+                {
+                    var prices = Predict(seed, target);
+                    var errors = week.Prices.Select((price, i) => price is null
+                            ? (double?)null : Math.Abs(prices[i] - price.Value) / (double)price.Value)
+                        .OfType<double>().Order().ToArray();
+                    var inliers = week.Prices.Select((price, i) => price is not null
+                        && Math.Abs(prices[i] - price.Value) <= RoundingTolerance).Count(value => value);
+                    return new { Template = target, Inliers = inliers,
+                        Residual = errors.Take(5).Average(error => error * error) };
+                }).OrderByDescending(match => match.Inliers).ThenBy(match => match.Residual).First();
+                // Five agreeing weekdays identify a historical shape while
+                // allowing up to two nonlinear/extreme observations. Those
+                // observations are retained in uncertainty, never discarded.
+                if (match.Inliers < 5) break;
+                assigned.Add((week, match.Template));
             }
+            if (assigned.Count != history.Length) continue;
+            var key = string.Join(',', assigned.Select(pair => pair.Template.Id));
+            if (hypotheses.ContainsKey(key)) continue;
 
-            var round = matched
-                .GroupBy(item => item.SourceTemplate.Id)
-                .ToDictionary(group => group.Key, group => group.MinBy(item => item.Residual)!);
-            if (candidateSet is null)
-            {
-                candidateSet = round;
-                continue;
-            }
-
-            var intersection = round
-                .Where(pair => candidateSet.ContainsKey(pair.Key))
-                .ToDictionary(
-                    pair => pair.Key,
-                    pair => pair.Value.Residual < candidateSet[pair.Key].Residual
-                        ? pair.Value
-                        : candidateSet[pair.Key]);
-            if (intersection.Count > 0)
-            {
-                candidateSet = intersection;
-            }
+            var forecasts = BuildForecasts(source, assigned);
+            if (current is not null && FilterPredictions(forecasts, current.Prices).Count == 0) continue;
+            var epsilon = forecasts[0].Epsilon;
+            var residual = assigned.Average(pair => MatchResidual(Predict(epsilon, pair.Template), pair.Week.Prices));
+            hypotheses[key] = new CandidateForecast(source, residual, epsilon, forecasts) { SourceWeek = anchor.Week };
         }
 
-        if (candidateSet is null || candidateSet.Count == 0)
-        {
-            return FirstWeek(records[^1]);
-        }
-
-        var ordered = candidateSet.Values
-            .OrderBy(item => item.Residual)
-            .ThenBy(item => item.SourceTemplate.Id)
-            .ToArray();
-        var best = ordered[0];
-        var unique = ordered.Length == 1 && completeWeeks.Count > 0;
-        var fullEpsilon = completeWeeks.Count > 0
-            ? ComputeEpsilon(completeWeeks[^1].Prices, best.SourceTemplate)
-            : best.Epsilon;
-
-        var eight = Templates.Select(target => new PricePrediction(
-            best.SourceTemplate,
-            target,
-            best.Epsilon,
-            Predict(best.Epsilon, target, fullEpsilon))).ToArray();
-
-        IReadOnlyList<CandidateForecast>? forecasts = null;
-        if (!unique)
-        {
-            forecasts = ordered.Select(candidate =>
-            {
-                var candidateEpsilon = completeWeeks.Count > 0
-                    ? ComputeEpsilon(completeWeeks[^1].Prices, candidate.SourceTemplate)
-                    : candidate.Epsilon;
-                var possibilities = Templates.Select(target => new PricePrediction(
-                    candidate.SourceTemplate,
-                    target,
-                    candidateEpsilon,
-                    Predict(candidateEpsilon, target, candidateEpsilon))).ToArray();
-                return new CandidateForecast(
-                    candidate.SourceTemplate,
-                    candidate.Residual,
-                    candidateEpsilon,
-                    possibilities);
-            }).ToArray();
-        }
-
+        var candidates = hypotheses.Values.ToArray();
+        var unique = candidates.Length == 1;
+        var best = candidates.FirstOrDefault();
         return new AnalysisResult
         {
             Stage = unique ? AnalysisStage.Locked : AnalysisStage.Pending,
-            Epsilon = fullEpsilon,
-            RawEpsilon = best.Epsilon,
-            LockedSourceTemplate = best.SourceTemplate,
-            LockedTargetTemplate = best.TargetTemplate,
-            EightPredictions = eight,
-            CandidateForecasts = forecasts,
+            Epsilon = best?.Epsilon,
+            RawEpsilon = best is null ? null
+                : ComputeEpsilon(complete.First(week => week.Week == best.SourceWeek).Prices, best.SourceTemplate),
+            LockedSourceTemplate = unique ? best!.SourceTemplate : null,
+            EightPredictions = unique ? best!.Possibilities : [],
+            CandidateForecasts = unique ? null : candidates,
             WeekCount = records.Count,
-            CandidateCount = ordered.Length,
+            CandidateCount = candidates.Length,
         };
+    }
+
+    private IReadOnlyList<PricePrediction> BuildForecasts(
+        PriceTemplate source,
+        IReadOnlyList<(WeekRecord Week, PriceTemplate Template)> assigned)
+    {
+        var epsilon = new double?[7];
+        var lower = new double[7];
+        var upper = new double[7];
+        var observedPrices = assigned.SelectMany(pair => pair.Week.Prices).OfType<int>().ToArray();
+        var observedMinimum = observedPrices.Min();
+        var observedMaximum = observedPrices.Max();
+        for (var day = 0; day < 7; day++)
+        {
+            var observations = assigned.Where(pair => pair.Week.Prices[day] is not null).Select(pair =>
+            {
+                var price = pair.Week.Prices[day]!.Value;
+                var scale = (double)pair.Template.Grid[day] * pair.Template.Coeff;
+                var value = (price / (double)pair.Template.Grid[day] - 1) / pair.Template.Coeff;
+                return (Value: value, Radius: 0.5 / scale);
+            }).OrderBy(value => value.Value).ToArray();
+            epsilon[day] = Median(observations.Select(value => value.Value));
+            lower[day] = observations.Min(value => value.Value - value.Radius);
+            upper[day] = observations.Max(value => value.Value + value.Radius);
+        }
+
+        return Templates.Select(target =>
+        {
+            var prices = Predict(epsilon, target);
+            var minimum = new int[7];
+            var maximum = new int[7];
+            var unverified = new bool[7];
+            for (var day = 0; day < 7; day++)
+            {
+                var observed = assigned.Where(pair => pair.Template.Id == target.Id
+                        && pair.Week.Prices[day] is not null)
+                    .Select(pair => pair.Week.Prices[day]!.Value).ToArray();
+                if (observed.Length > 0)
+                {
+                    // Reuse observed same-template prices, including nonlinear
+                    // extremes. No unverified global clipping rule is invented.
+                    prices[day] = JavaScriptRound(Median(observed.Select(value => (double)value)));
+                    minimum[day] = observed.Min() - 1;
+                    maximum[day] = observed.Max() + 1;
+                }
+                else
+                {
+                    minimum[day] = (int)Math.Floor(target.Grid[day] * (1 + target.Coeff * lower[day]));
+                    maximum[day] = (int)Math.Ceiling(target.Grid[day] * (1 + target.Coeff * upper[day]));
+                    // A new extreme is extrapolation beyond observed support,
+                    // not evidence of a particular clipping threshold. Wait
+                    // for a real observation rather than publishing a bound.
+                    unverified[day] = prices[day] < observedMinimum - RoundingTolerance
+                        || prices[day] > observedMaximum + RoundingTolerance;
+                }
+            }
+            return new PricePrediction(source, target, epsilon, prices)
+            {
+                MinimumPrices = minimum, MaximumPrices = maximum, UnverifiedDays = unverified,
+            };
+        }).ToArray();
+    }
+
+    public static bool IsSupportedPrice(int price) => price is >= MinimumPrice and <= MaximumPrice;
+
+    private static int DistanceFromRange(int price, int minimum, int maximum) =>
+        Math.Max(0, Math.Max(minimum - price, price - maximum));
+
+    private static double Median(IEnumerable<double> values)
+    {
+        var ordered = values.Order().ToArray();
+        return (ordered[(ordered.Length - 1) / 2] + ordered[ordered.Length / 2]) / 2;
     }
 
     private AnalysisResult FirstWeek(WeekRecord record)

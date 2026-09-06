@@ -9,7 +9,9 @@ public sealed class PredictionStatusService(
     public PredictionStatus Get(string itemName, DateOnly? day = null)
     {
         var today = day ?? GameCalendar.DateAt(DateTime.Now);
-        var dated = store.GetDatedPrices(itemName);
+        var dated = store.GetDatedPrices(itemName)
+            .Where(pair => pair.Key <= today)
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
         if (dated.Count == 0)
         {
             return NeedCompleteWeek(today);
@@ -36,6 +38,11 @@ public sealed class PredictionStatusService(
             return NeedCompleteWeek(today);
         }
 
+        if (current.All(value => value is null))
+        {
+            return new(PredictionState.Pending, "本周尚未记录价格；记录今天价格后再校准走势", [], [], 1);
+        }
+
         var completeCount = weeks.Values.Count(week => week.All(value => value is not null));
         if (analysis.Stage == AnalysisStage.FirstWeek)
         {
@@ -55,6 +62,11 @@ public sealed class PredictionStatusService(
 
         if (analysis.Stage != AnalysisStage.Locked)
         {
+            if (analysis.CandidateCount == 0)
+            {
+                return Unmatched();
+            }
+
             if (current.Any(value => value is not null)
                 && analysis.CandidateForecasts is { Count: > 0 }
                 && TryBuildCurrentWeekStatus(
@@ -62,22 +74,12 @@ public sealed class PredictionStatusService(
                     currentMonday,
                     current,
                     today,
-                    lockedEpsilon: false,
                     out var candidateStatus))
             {
                 return candidateStatus;
             }
 
-            return new(
-                PredictionState.Pending,
-                $"ε 尚有 {analysis.CandidateCount} 个候选；预计还需未来 1 天的数据，若仍未收敛再补 1 天",
-                [],
-                [],
-                1)
-            {
-                CandidateTrends = DistinctTrends(
-                    analysis.CandidateForecasts?.SelectMany(candidate => candidate.Possibilities) ?? []),
-            };
+            return Unmatched();
         }
 
         return TryBuildCurrentWeekStatus(
@@ -85,15 +87,9 @@ public sealed class PredictionStatusService(
             currentMonday,
             current,
             today,
-            lockedEpsilon: true,
             out var lockedStatus)
             ? lockedStatus
-            : new(
-                PredictionState.Pending,
-                "ε 已锁定，但当前价格暂时无法匹配本周走势；请继续记录新的价格",
-                [],
-                [],
-                1);
+            : Unmatched();
     }
 
     private bool TryBuildCurrentWeekStatus(
@@ -101,12 +97,12 @@ public sealed class PredictionStatusService(
         DateOnly currentMonday,
         int?[] current,
         DateOnly today,
-        bool lockedEpsilon,
         out PredictionStatus status)
     {
         var survivors = prediction.FilterCurrentWeek(predictions, current)
             .Where(item => !item.Eliminated)
-            .GroupBy(item => string.Join(',', item.Prices))
+            .GroupBy(item => string.Join(',', item.Prices) + ":" + string.Join(',', item.MinimumPrices ?? [])
+                + ":" + string.Join(',', item.MaximumPrices ?? []) + ":" + string.Join(',', item.UnverifiedDays ?? []))
             .Select(group => group.First())
             .ToArray();
         if (survivors.Length == 0)
@@ -119,31 +115,43 @@ public sealed class PredictionStatusService(
         var remainingIndexes = Enumerable.Range(todayIndex, 7 - todayIndex).ToArray();
         var futureIndexes = remainingIndexes.Skip(1).ToArray();
 
-        if (survivors.Length == 1)
+        var minimum = Enumerable.Range(0, 7).Select(index => survivors.Min(item => item.MinimumAt(index))).ToArray();
+        var maximum = Enumerable.Range(0, 7).Select(index => survivors.Max(item => item.MaximumAt(index))).ToArray();
+        // One survivor is not sufficient: reject wide model uncertainty and
+        // unsupported extrapolations, and require observations on two days.
+        if (current.Count(price => price is not null) >= 2
+            && remainingIndexes.Where(index => current[index] is null).All(index =>
+                survivors.All(item => item.UnverifiedDays?[index] != true)
+                && PricePredictionService.IsSupportedPrice(minimum[index])
+                && PricePredictionService.IsSupportedPrice(maximum[index])
+                && maximum[index] - minimum[index] <= 2 * PricePredictionService.RoundingTolerance))
         {
             var future = remainingIndexes.Select(index => new FuturePrice(
                 currentMonday.AddDays(index),
                 index,
-                survivors[0].Prices[index])).ToArray();
+                current[index] ?? MedianPrice(survivors.Select(item => item.Prices[index])))).ToArray();
             status = new(
                 PredictionState.Ready,
-                future.Length > 0 ? "本周走势已确定" : "本周已结束；下周模板将在周一重新随机",
+                futureIndexes.Length > 0 ? "本周预测已收敛；后续实测若不匹配将重新校准" : "本周已结束；下周记录后重新校准",
                 future,
                 [],
                 0);
             return true;
         }
 
-        var ranges = futureIndexes.Select(index => new FutureRange(
-            currentMonday.AddDays(index),
-            index,
-            survivors.Min(item => item.Prices[index]),
-            survivors.Max(item => item.Prices[index]))).ToArray();
+        var ranges = futureIndexes.Where(index => survivors.All(item => item.UnverifiedDays?[index] != true)
+                && PricePredictionService.IsSupportedPrice(minimum[index])
+                && PricePredictionService.IsSupportedPrice(maximum[index]))
+            .Select(index => new FutureRange(
+                currentMonday.AddDays(index),
+                index,
+                minimum[index],
+                maximum[index])).ToArray();
         status = new(
             PredictionState.Filtering,
-            lockedEpsilon
-                ? $"ε 已锁定，本周走势还剩 {survivors.Length} 种；还需未来 1 天的数据以继续排除"
-                : $"本周走势还剩 {survivors.Length} 种；还需未来 1 天的数据以继续排除",
+            ranges.Length < futureIndexes.Length
+                ? "存在无法可靠外推的价格；有效区间仅供参考，请继续记录"
+                : "本周预测尚有歧义；区间仅供参考，请继续记录",
             [],
             ranges,
             1)
@@ -151,6 +159,15 @@ public sealed class PredictionStatusService(
             CandidateTrends = DistinctTrends(survivors),
         };
         return true;
+    }
+
+    private static PredictionStatus Unmatched() => new(
+        PredictionState.Pending, "历史或当前价格与模型不匹配，已停止确定预测；请核对记录并继续采集", [], [], 1);
+
+    private static int MedianPrice(IEnumerable<int> prices)
+    {
+        var ordered = prices.Order().ToArray();
+        return (int)Math.Floor((ordered[(ordered.Length - 1) / 2] + ordered[ordered.Length / 2]) / 2d + 0.5);
     }
 
     private static PredictionStatus NeedCompleteWeek(DateOnly today)
@@ -163,6 +180,8 @@ public sealed class PredictionStatusService(
     }
 
     private static CandidateTrend[] DistinctTrends(IEnumerable<PricePrediction> predictions) => predictions
+        .Where(item => item.Prices.All(PricePredictionService.IsSupportedPrice))
+        .Where(item => item.UnverifiedDays?.Any(value => value) != true)
         .GroupBy(item => string.Join(',', item.Prices))
         .Select(group => new CandidateTrend(group.First().Prices.ToArray()))
         .ToArray();

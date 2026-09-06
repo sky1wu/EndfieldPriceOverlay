@@ -82,7 +82,7 @@ public sealed class PricePredictionServiceTests
     }
 
     [Fact]
-    public void RepeatedCompleteWeeksKeepAllEpsilonCandidatesLikeTheWebTool()
+    public void RepeatedCompleteWeeksKeepAllEpsilonCandidates()
     {
         int?[] repeated = [1800, 2268, 2600, 2029, 3357, 1289, 1507];
 

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/EndfieldPriceOverlay/Domain/PriceModels.cs" Link="Domain/PriceModels.cs" />
+    <Compile Include="../../src/EndfieldPriceOverlay/Domain/GameCalendar.cs" Link="Domain/GameCalendar.cs" />
+    <Compile Include="../../src/EndfieldPriceOverlay/Domain/ItemRegionCatalog.cs" Link="Domain/ItemRegionCatalog.cs" />
+    <Compile Include="../../src/EndfieldPriceOverlay/Services/CaptureStore.cs" Link="Services/CaptureStore.cs" />
+    <Compile Include="../../src/EndfieldPriceOverlay/Services/PricePredictionService.cs" Link="Services/PricePredictionService.cs" />
+    <Compile Include="../../src/EndfieldPriceOverlay/Services/PredictionStatusService.cs" Link="Services/PredictionStatusService.cs" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.9" />
+    <PackageReference Include="SQLitePCLRaw.provider.winsqlite3" Version="2.1.11" />
+  </ItemGroup>
+</Project>

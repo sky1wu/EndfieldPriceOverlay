@@ -35,6 +35,8 @@ dotnet build .\EndfieldPriceOverlay.slnx
 dotnet test .\EndfieldPriceOverlay.slnx
 ```
 
+本地历史价格回测：见 [回测工具说明](scripts/PredictionBacktest/README.md)、[问题分析](docs/prediction-backtest-2026-09-06.md) 和 [修复验证](docs/prediction-fix-2026-09-06.md)。工具只读备份数据库，再按每周截止日调用现有算法，对比后续实价。
+
 生成包含 .NET 运行时的 Windows x64 发布目录：
 
 ```powershell
@@ -64,7 +66,7 @@ legacy/reference/                 原算法分析仪存档
 - .NET 10 + WPF，Per-Monitor V2 DPI，适配 1080p/4K 和主副屏。
 - RapidOcrNet + PP-OCRv5 中文模型，完全离线。
 - SQLite 本地存储，按日期合并最近 7 天读数。
-- 8 套价格模板、ε 反推、跨周残差收敛和本周实测过滤。
+- 8 套价格模板、跨周一致校准、本周实测过滤；失配或未经验证的极值暂缓预测，参考区间不作为购买成本保证。
 - 校准流程无循环弹窗，任何阶段均可取消。
 
 独占全屏可能阻止普通桌面截图；遇到黑屏时改用无边框全屏。本工具不读取游戏内存，也不模拟输入。

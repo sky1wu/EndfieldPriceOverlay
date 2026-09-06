@@ -26,7 +26,7 @@ public sealed class PurchaseRecommendationService(
                 .Where(item => item.Region == setting.Region)
                 .OrderBy(item => ItemRegionCatalog.ItemSortOrder(setting.Region, item.Name))
                 .ToArray();
-            var (offers, readyItemCount, rangeItemCount) = BuildDailyOffers(
+            var (offers, readyItemCount) = BuildDailyOffers(
                 setting.Region,
                 regionItems,
                 today,
@@ -36,8 +36,7 @@ public sealed class PurchaseRecommendationService(
                 offers,
                 dates,
                 regionItems.Length,
-                readyItemCount,
-                rangeItemCount);
+                readyItemCount);
         }).ToArray();
     }
 
@@ -46,8 +45,7 @@ public sealed class PurchaseRecommendationService(
         IReadOnlyList<DailyPurchaseOffer> offers,
         IReadOnlyList<DateOnly> dates,
         int knownItemCount,
-        int? readyItemCount = null,
-        int rangeItemCount = 0)
+        int? readyItemCount = null)
     {
         Validate(setting);
         if (setting.Limit == 0 || setting.Current == 0 && setting.DailyRecovery == 0)
@@ -61,7 +59,7 @@ public sealed class PurchaseRecommendationService(
         }
 
         var cheapestByDate = offers
-            .Where(offer => offer.Region == setting.Region)
+            .Where(offer => offer.Region == setting.Region && !offer.IsRange)
             .GroupBy(offer => offer.Date)
             .ToDictionary(
                 group => group.Key,
@@ -108,16 +106,14 @@ public sealed class PurchaseRecommendationService(
         }
 
         var exactItemCount = readyItemCount ?? offers
-            .Where(offer => offer.Region == setting.Region)
+            .Where(offer => offer.Region == setting.Region && !offer.IsRange)
             .Select(offer => offer.ItemName)
             .Distinct(StringComparer.Ordinal)
             .Count();
         var catalogCount = ItemRegionCatalog.ItemsForRegion(setting.Region).Count;
-        var message = rangeItemCount > 0
-            ? $"本周最多可买 {lines.Sum(line => line.Quantity)} 件；基于 {exactItemCount}/{catalogCount} 个确定预测，并按 {rangeItemCount} 个未收敛物资的价格上限保守分配。"
-            : exactItemCount >= catalogCount
-                ? $"本周最多可买 {lines.Sum(line => line.Quantity)} 件；已按每日最低预测价分配。"
-                : $"本周最多可买 {lines.Sum(line => line.Quantity)} 件；基于 {exactItemCount}/{catalogCount} 个确定预测物资分配。";
+        var message = exactItemCount >= catalogCount
+            ? $"本周最多可买 {lines.Sum(line => line.Quantity)} 件；已按每日最低预测价分配。"
+            : $"本周最多可买 {lines.Sum(line => line.Quantity)} 件；基于 {exactItemCount}/{catalogCount} 个确定预测物资分配。";
         return new RegionPurchaseRecommendation(
             setting.Region,
             setting.Current,
@@ -129,7 +125,7 @@ public sealed class PurchaseRecommendationService(
             IsReady: true);
     }
 
-    private (IReadOnlyList<DailyPurchaseOffer> Offers, int ReadyItemCount, int RangeItemCount) BuildDailyOffers(
+    private (IReadOnlyList<DailyPurchaseOffer> Offers, int ReadyItemCount) BuildDailyOffers(
         string region,
         IReadOnlyList<ItemSummary> items,
         DateOnly today,
@@ -137,10 +133,9 @@ public sealed class PurchaseRecommendationService(
     {
         var offers = new List<DailyPurchaseOffer>();
         var readyItemCount = 0;
-        var rangeItemCount = 0;
         foreach (var item in items)
         {
-            var hasTodayPrice = item.LatestDate == today;
+            var hasTodayPrice = store.GetDatedPrices(item.Name).TryGetValue(today, out var todayPrice);
             if (hasTodayPrice)
             {
                 offers.Add(new DailyPurchaseOffer(
@@ -148,7 +143,7 @@ public sealed class PurchaseRecommendationService(
                     item.Name,
                     today,
                     WeekdayIndex(today),
-                    item.LatestPrice));
+                    todayPrice));
             }
 
             var status = predictionStatus.Get(item.Name, today);
@@ -160,27 +155,11 @@ public sealed class PurchaseRecommendationService(
                     .Where(day => !hasTodayPrice || day.Date != today)
                     .Select(day => new DailyPurchaseOffer(region, item.Name, day.Date, day.Weekday, day.Price)));
             }
-            else
-            {
-                var ranges = status.Ranges
-                    .Where(day => day.Date > today && day.Date <= sunday)
-                    .ToArray();
-                if (ranges.Length > 0)
-                {
-                    rangeItemCount++;
-                    offers.AddRange(ranges.Select(day => new DailyPurchaseOffer(
-                        region,
-                        item.Name,
-                        day.Date,
-                        day.Weekday,
-                        day.Maximum,
-                        day.Minimum,
-                        day.Maximum)));
-                }
-            }
+            // Candidate envelopes are reference ranges, not guaranteed
+            // purchase-cost ceilings. Only actual or converged prices enter.
         }
 
-        return (offers, readyItemCount, rangeItemCount);
+        return (offers, readyItemCount);
     }
 
     private static int[] OptimizeQuantities(

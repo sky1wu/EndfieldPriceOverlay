@@ -87,7 +87,7 @@ public sealed class PurchaseRecommendationServiceTests : IDisposable
             new DateTime(2026, 2, 8, 12, 0, 0)));
         store.Save(new CaptureReading(
             "武陵冻梨货组",
-            [2400, 2339, 2168, 1250, 1282, 2070, 1313],
+            [2400, 2339, 2168, 1250, 1282, 2070, 1216],
             new DateTime(2026, 2, 14, 12, 0, 0)));
         store.SaveDailyPrices(
         [
@@ -115,7 +115,7 @@ public sealed class PurchaseRecommendationServiceTests : IDisposable
     }
 
     [Fact]
-    public void UnsettledFutureRangesParticipateUsingTheirMaximumPrice()
+    public void UnsettledFutureRangesDoNotBecomeGuaranteedPurchaseCeilings()
     {
         var store = new CaptureStore(Path.Combine(directory, "future-ranges.db"));
         SaveDaily(store, "武侠电影货组",
@@ -146,16 +146,10 @@ public sealed class PurchaseRecommendationServiceTests : IDisposable
             new DateOnly(2026, 7, 13));
 
         var region = Assert.Single(result);
-        Assert.True(region.IsReady);
-        Assert.Contains("1 个未收敛物资的价格上限", region.Message);
-        var wednesday = Assert.Single(
-            region.Lines,
-            line => line.Date == new DateOnly(2026, 7, 15));
-        Assert.Equal("武侠电影货组", wednesday.ItemName);
-        Assert.True(wednesday.IsRange);
-        Assert.Equal(711, wednesday.Minimum);
-        Assert.Equal(1334, wednesday.Maximum);
-        Assert.Equal(1334, wednesday.Price);
+        Assert.False(region.IsReady);
+        Assert.Empty(region.Lines);
+        Assert.Contains("缺少", region.Message);
+        Assert.Contains("确定预测", region.Message);
     }
 
     public void Dispose()

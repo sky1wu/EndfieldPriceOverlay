@@ -13,13 +13,29 @@ public sealed record PricePrediction(
     int[] Prices,
     double Residual = double.PositiveInfinity,
     bool Eliminated = false,
-    double? Confidence = null);
+    double? Confidence = null)
+{
+    // Bounds describe rounding and disagreement between historical observations,
+    // not a calibrated probability interval or a guaranteed market price limit.
+    public int[]? MinimumPrices { get; init; }
+
+    public int[]? MaximumPrices { get; init; }
+
+    public bool[]? UnverifiedDays { get; init; }
+
+    public int MinimumAt(int index) => MinimumPrices?[index] ?? Prices[index];
+
+    public int MaximumAt(int index) => MaximumPrices?[index] ?? Prices[index];
+}
 
 public sealed record CandidateForecast(
     PriceTemplate SourceTemplate,
     double Residual,
     double?[] Epsilon,
-    IReadOnlyList<PricePrediction> Possibilities);
+    IReadOnlyList<PricePrediction> Possibilities)
+{
+    public string? SourceWeek { get; init; }
+}
 
 public enum AnalysisStage
 {

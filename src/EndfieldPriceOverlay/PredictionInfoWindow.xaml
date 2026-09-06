@@ -102,7 +102,7 @@
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="跨周收敛，再用本周数据排除" Style="{StaticResource SectionTitle}" />
                             <TextBlock Style="{StaticResource BodyText}"
-                                       Text="候选走势会与下一周实测价格比较相对均方误差；保留接近最佳误差的候选，并在多次跨周比较中取交集。ε 锁定后，本周每天新增的实测价格会继续排除不符合的模板。" />
+                                       Text="每个候选保留各历史周的模板对应关系，重复价格周不重复计权。已见过的同模板价格用于校正；历史偏差保留在参考范围中。本周新增实测若与所有候选不符，会停止确定预测并重新校准。" />
                         </StackPanel>
                     </Grid>
 
@@ -118,7 +118,7 @@
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="如何解读结果" Style="{StaticResource SectionTitle}" />
                             <TextBlock Style="{StaticResource BodyText}"
-                                       Text="只剩 1 套走势时，界面显示未来每日预测价；仍有多套走势时，显示各候选的最低价至最高价范围。“还需 N 天”是根据当前候选数给出的估计，实际收敛可能更早或更晚。" />
+                                       Text="至少记录本周两天、候选对剩余价格的分歧足够小时，才显示每日预测价。尚有歧义时，区间仅供参考，不作为购买计划的保证上限。超出已观测价格范围的新高、新低需等待验证，不直接外推。" />
                         </StackPanel>
                     </Grid>
 

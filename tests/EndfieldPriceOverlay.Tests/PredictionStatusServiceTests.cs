@@ -143,7 +143,7 @@ public sealed class PredictionStatusServiceTests : IDisposable
     }
 
     [Fact]
-    public void RepeatedCompleteWeeksRemainUncertainLikeTheWebTool()
+    public void RepeatedCompleteWeeksDoNotInventBoundsForUnidentifiedTemplates()
     {
         var store = new CaptureStore(Path.Combine(directory, "new-week-lock.db"));
         store.ApplyPriceChanges("悬空鼷兽骨雕货组",
@@ -171,11 +171,12 @@ public sealed class PredictionStatusServiceTests : IDisposable
 
         Assert.Equal(PredictionState.Filtering, status.State);
         Assert.Empty(status.Future);
-        Assert.NotEmpty(status.Ranges);
+        Assert.Empty(status.Ranges);
+        Assert.Contains("无法可靠外推", status.Message);
     }
 
     [Fact]
-    public void WuxiaMovieDataKeepsTheSameThreeTrendsAsTheWebTool()
+    public void WuxiaMovieMondayKeepsReferenceRangesContainingTheObservedRepeat()
     {
         var store = new CaptureStore(Path.Combine(directory, "wuxia-movie.db"));
         store.ApplyPriceChanges("武侠电影货组",
@@ -202,19 +203,18 @@ public sealed class PredictionStatusServiceTests : IDisposable
         var status = service.Get("武侠电影货组", new DateOnly(2026, 7, 13));
 
         Assert.Equal(PredictionState.Filtering, status.State);
-        Assert.Contains("还剩 3 种", status.Message);
-        Assert.Equal(3, status.CandidateTrends.Count);
+        Assert.Contains("仅供参考", status.Message);
         Assert.Equal(
             status.CandidateTrends.Count,
             status.CandidateTrends.Select(trend => string.Join(',', trend.Prices)).Distinct().Count());
-        Assert.Collection(
-            status.Ranges,
-            tuesday => Assert.Equal((2174, 4659), (tuesday.Minimum, tuesday.Maximum)),
-            wednesday => Assert.Equal((711, 1334), (wednesday.Minimum, wednesday.Maximum)),
-            thursday => Assert.Equal((2400, 7200), (thursday.Minimum, thursday.Maximum)),
-            friday => Assert.Equal((602, 1806), (friday.Minimum, friday.Maximum)),
-            saturday => Assert.Equal((2400, 9600), (saturday.Minimum, saturday.Maximum)),
-            sunday => Assert.Equal((367, 1467), (sunday.Minimum, sunday.Maximum)));
+        int[] repeat = [2201, 2174, 1334, 2400, 1806, 2400, 1467];
+        Assert.NotEmpty(status.Ranges);
+        Assert.All(status.Ranges, range =>
+        {
+            Assert.InRange(repeat[range.Weekday], range.Minimum, range.Maximum);
+            Assert.InRange(range.Minimum, 300, 5500);
+            Assert.InRange(range.Maximum, 300, 5500);
+        });
     }
 
     public void Dispose()
