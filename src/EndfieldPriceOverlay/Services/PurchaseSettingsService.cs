@@ -78,6 +78,6 @@ public sealed class PurchaseSettingsService
     private static IReadOnlyList<RegionPurchaseSettings> DefaultSettings() =>
     [
         new(ItemRegionCatalog.ValleyIv, Current: 0, Limit: 960, DailyRecovery: 320),
-        new(ItemRegionCatalog.Wuling, Current: 0, Limit: 340, DailyRecovery: 170),
+        new(ItemRegionCatalog.Wuling, Current: 0, Limit: 460, DailyRecovery: 230),
     ];
 }

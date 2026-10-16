@@ -16,8 +16,8 @@ public sealed class PurchaseSettingsServiceTests : IDisposable
 
         Assert.Equal(960, settings[ItemRegionCatalog.ValleyIv].Limit);
         Assert.Equal(320, settings[ItemRegionCatalog.ValleyIv].DailyRecovery);
-        Assert.Equal(340, settings[ItemRegionCatalog.Wuling].Limit);
-        Assert.Equal(170, settings[ItemRegionCatalog.Wuling].DailyRecovery);
+        Assert.Equal(460, settings[ItemRegionCatalog.Wuling].Limit);
+        Assert.Equal(230, settings[ItemRegionCatalog.Wuling].DailyRecovery);
     }
 
     [Fact]

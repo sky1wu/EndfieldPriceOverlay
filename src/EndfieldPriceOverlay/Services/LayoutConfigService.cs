@@ -31,7 +31,7 @@ public sealed record ScreenLayout(
 public static class MarketOverviewLayout
 {
     public const int ColumnCount = 7;
-    public const int SlotCount = 12;
+    public const int SlotCount = ColumnCount * 2;
 
     public static NormalizedRect Header { get; } = new(0.015, 0.010, 0.500, 0.185);
 

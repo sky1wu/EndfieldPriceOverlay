@@ -24,6 +24,7 @@ public sealed class OcrServiceTests
     [InlineData("：剩余可购买数量400/400 18小时后+200△即将溢出", 400, 400, 200)]
     [InlineData("剩余可购买数量32O／96O 23小时后＋32O", 320, 960, 320)]
     [InlineData("剩余可购买数量 170 / 340 6小时后 + 170", 170, 340, 170)]
+    [InlineData("剩余可购买数量 460/460 17小时后+230 即将溢出", 460, 460, 230)]
     public void ParsesPurchaseQuota(string text, int current, int limit, int dailyRecovery)
     {
         var reading = OcrService.ParsePurchaseQuota(text, 0.95);

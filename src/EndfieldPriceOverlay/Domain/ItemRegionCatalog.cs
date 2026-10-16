@@ -37,6 +37,7 @@ public static class ItemRegionCatalog
         "息壤桥梁货组",
         "选剑铸炉货组",
         "界石锁货组",
+        "龙泡泡浮空艇货组",
     ];
 
     private static readonly IReadOnlyDictionary<string, string> Regions = ValleyIvItems

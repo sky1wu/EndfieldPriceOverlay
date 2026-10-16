@@ -24,16 +24,20 @@ public sealed class LayoutConfigServiceTests
     }
 
     [Fact]
-    public void MarketOverviewSlotsCoverSevenCardsThenFiveCards()
+    public void MarketOverviewSlotsCoverTwoRowsOfSevenCards()
     {
         var first = MarketOverviewLayout.PriceSlot(0, 0.545);
         var seventh = MarketOverviewLayout.PriceSlot(6, 0.545);
         var eighth = MarketOverviewLayout.PriceSlot(7, 0.850);
-        var last = MarketOverviewLayout.PriceSlot(11, 0.850);
+        var thirteenth = MarketOverviewLayout.PriceSlot(12, 0.850);
+        var last = MarketOverviewLayout.PriceSlot(13, 0.850);
 
         Assert.Equal(first.Left, eighth.Left, 6);
         Assert.Equal(first.Top, seventh.Top, 6);
         Assert.True(eighth.Top > first.Bottom);
+        Assert.Equal(MarketOverviewLayout.PriceSlot(5, 0.545).Left, thirteenth.Left, 6);
+        Assert.Equal(eighth.Top, thirteenth.Top, 6);
+        Assert.Equal(seventh.Left, last.Left, 6);
         Assert.True(last.Right < 1);
         Assert.Equal(0.485, first.Top, 6);
         Assert.Equal(0.846, eighth.Bottom, 6);
@@ -42,6 +46,11 @@ public sealed class LayoutConfigServiceTests
         Assert.True(firstName.Left < first.Left);
         Assert.True(firstName.Top > 0.545);
         Assert.True(firstName.Bottom > firstName.Top);
+        var thirteenthName = MarketOverviewLayout.NameSlot(12, 0.850);
+        Assert.True(thirteenthName.Left < thirteenth.Left);
+        Assert.True(thirteenthName.Top > 0.850);
+        Assert.Throws<ArgumentOutOfRangeException>(() => MarketOverviewLayout.PriceSlot(14, 0.850));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MarketOverviewLayout.NameSlot(14, 0.850));
     }
 
     [Fact]

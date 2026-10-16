@@ -83,8 +83,8 @@ public sealed partial class OcrService : IDisposable
             purchaseQuotaBlocks.Length == 0 ? null : purchaseQuotaBlocks.Average(block => block.Score));
         var slots = new MarketOverviewSlot[MarketOverviewLayout.SlotCount];
         var rowBottoms = MarketOverviewLocator.LocateRowBottoms(bitmap);
-        var slotsToRead = region == ItemRegionCatalog.Wuling
-            ? ItemRegionCatalog.ItemsForRegion(ItemRegionCatalog.Wuling).Count
+        var slotsToRead = ItemRegionCatalog.IsKnownRegion(region)
+            ? Math.Min(ItemRegionCatalog.ItemsForRegion(region!).Count, MarketOverviewLayout.SlotCount)
             : MarketOverviewLayout.SlotCount;
 
         for (var index = 0; index < slotsToRead; index++)
@@ -184,13 +184,19 @@ public sealed partial class OcrService : IDisposable
     private RecognizedPrice DetectMarketPrice(SKBitmap crop)
     {
         var candidate = SelectPriceCandidate(crop);
-        if (candidate.Price is not null)
+        var needsLeadingDigitCheck = candidate.Price is >= 1300 and < 2000
+            && candidate.FirstCharacterScore is < 0.9;
+        if (candidate.Price is not null && !needsLeadingDigitCheck)
         {
             return candidate;
         }
 
-        using var focusedCrop = Crop(crop, new NormalizedRect(0.18, 0, 0.78, 1));
-        return SelectPriceCandidate(focusedCrop);
+        // Re-read without the currency icon before deciding whether the leading 1 is noise.
+        using var focusedCrop = Crop(crop, new NormalizedRect(0.18, 0, 1, 1));
+        var focused = SelectPriceCandidate(focusedCrop);
+        return focused.Price is not null && (candidate.Price is null || focused.Score > candidate.Score)
+            ? focused
+            : candidate;
     }
 
     private RecognizedPrice SelectPriceCandidate(SKBitmap crop)
